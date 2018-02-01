@@ -1,0 +1,49 @@
+<div class="block">
+    <style>
+        .btn_icon{
+            cursor: pointer;
+            z-index: 99999999;
+            border: none;
+            background: none;
+            background-repeat: no-repeat;
+            background-image: url(../../../wa-content/img/icon16.png?1503);
+            background-position: -64px -16px;
+            height: 16px;
+            width: 16px;
+            display: inline-block;
+            text-indent: -9999px;
+            text-decoration: none!important;
+        }
+
+        form[id=brand-edit-form-plus] {
+            overflow: inherit;
+        }
+
+    </style>
+
+    <form id="brand-edit-form-plus" method="post" action="?plugin=productbrands&action=add">
+        {$wa->csrf()}
+
+    <span class="count">
+             <input type="submit" class="btn_icon" name="btn" value="go">
+        </span>
+    </form>
+    <h5 class="heading">
+        <i class="icon16 darr collapse-handler" id="s-brands-list-handler"></i><a href="#/brands/">[`Brands`]
+    </a>
+    </h5>
+
+
+    <div class="s-collection-list" id="s-brands-list">
+        <ul class="menu-v">
+            {foreach shopProductbrandsPlugin::getBrands() as $b}
+            <li data-type="type" id="type-{$b.id}">
+                <span class="count">{$b.count}</span>
+                <a href="#/products/hash=brand/{$b.id}/">
+                    {$b.name}
+                </a>
+            </li>
+            {/foreach}
+        </ul>
+    </div>
+</div>

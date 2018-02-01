@@ -1,0 +1,597 @@
+<script type="text/javascript" src="{$wa_url}wa-content/js/jquery-wa/wa.dialog.js?v{$plugin_version}"></script>
+<link type="text/css" rel="stylesheet" href="{$wa_url}wa-content/js/redactor/redactor.css">
+<script src="{$wa_url}wa-content/js/redactor/redactor.min.js"></script>
+{$lang = substr($wa->locale(), 0, 2)}
+{if $lang != 'en'}<script src="{$wa_url}wa-content/js/redactor/{$lang}.js"></script>{/if}
+
+{foreach $seo_css as $_href}
+<link type="text/css" rel="stylesheet" href="{$_href}?v{$plugin_version}" />
+{/foreach}
+{foreach $seo_js as $_src}
+<script type="text/javascript" src="{$_src}?v{$plugin_version}"></script>
+{/foreach}
+<div class="seo-settings">
+    <div class="seo-settings__header">
+        <div class="seo-settings__links">
+            <div>
+                <div class="link-box seo-settings__link seo-settings__help-button">
+                    <div class="link-box__icon icon-help"></div>
+                    <a class="link-box__link">
+                        [`Info`]
+                    </a>
+                </div>
+                <a class="link-box seo-settings__link" href="mailto:support@bodysite.ru">
+                    <div class="link-box__icon icon-support"></div>
+                    <div class="link-box__link">
+                        [`Support`]
+                    </div>
+                </a>
+                <a class="link-box seo-settings__link" href="https://www.webasyst.ru/store/plugin/shop/seo/reviews/" target="_blank">
+                    <div class="link-box__icon icon-review"></div>
+                    <div class="link-box__link">
+                        [`Review`]
+                    </div>
+                </a>
+            </div>
+            <div class="seo-settings__developer">
+                [`Developer`]:
+                <a class="link-box" href="http://bodysite.ru/" target="_blank">
+                    <div class="link-box__icon icon-outsource-link"></div>
+                    <div class="link-box__link">
+                        bodysite.ru
+                    </div>
+                </a>
+            </div>
+        </div>
+        <h1 class="seo-settings__title">
+            [`SEO`]
+        </h1>
+    </div>
+    <div class="seo-settings__content">
+        <form class="form form_ajax" id="seo_settings_form" action="?plugin=seo&module=settings" method="post">
+            <div class="field-group">
+                <div class="field-group__fields">
+                    <div class="field-box">
+                        <label for="plugin-status_input" class="field-box__label">
+                            [`Plugin status`]
+                        </label>
+                        <div class="field-box__field">
+                            <select id="plugin-status_input" name="seo_settings[general][plugin_enable]">
+                                <option value="0">
+                                    [`Off`]
+                                </option>
+                                <option value="1" {if $seo_settings['general'].plugin_enable|default:'' == '1'}selected="selected"{/if}>
+                                    [`On`]
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h2 class="seo-settings__sub-header">
+                [`General settings`]
+            </h2>
+            <div class="select-tabs">
+                <div class="field-group">
+                    <div class="field-group__fields">
+                        <div class="field-box">
+                            <label class="field-box__field select-tabs__select select-box">
+                                <select class="select-box__input" id="seo-settings-storefront-select">
+                                    {foreach $storefronts as $key => $storefront}
+                                        {$_seo_settings = $seo_settings[$storefront]}
+                                        {$_seo_settings['storefront_name'] = ''}
+                                        <option value="{$key}" {if $key != '' and implode('',$_seo_settings) != ''}style="color: red;"{/if}>
+                                            {if $key == '0'}
+                                                [`General`]
+                                            {else}
+                                                {$storefront|escape}
+                                            {/if}
+                                        </option>
+                                    {/foreach}
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                {foreach $storefronts as $key => $storefront}
+                    <div class="select-tabs__tab select-tabs__tab_value_{$key}">
+                        {if $storefront != 'general'}
+                            <div class="field-group">
+                                <div class="field-group__fields">
+                                    <div class="field-box">
+                                        <label class="field-box__label">
+                                            [`Storefront name`]
+                                        </label>
+                                        <div class="field-box__field">
+                                            <input name="seo_settings[{$storefront|escape}][storefront_name]" type="text" class="large field-box__input-text" value="{$seo_settings[$storefront].storefront_name|default:''|escape}">
+                                        </div>
+                                    </div>
+                                    {foreach $seo_settings_fields as $id => $name}
+                                    <div class="field-box">
+                                        <label class="field-box__label">
+                                            {$name|escape}
+                                        </label>
+                                        <div class="field-box__field">
+                                            <input name="seo_settings[{$storefront|escape}][storefront_field_{$id|escape}]" type="text" class="large field-box__input-text" value="{$seo_settings[$storefront]['storefront_field_'|cat:$id]|default:''|escape}" />
+                                        </div>
+                                    </div>
+                                    {/foreach}
+                                </div>
+                            </div>
+                        {/if}
+                        <div class="field-group field-group_enable-helper field-group_extensible">
+                            <h3 class="field-group__header field-box">
+                                <label class="check-box field-box__field field-group__trigger">
+                                    <input name="seo_settings[{$storefront|escape}][main_enable]" class="check-box__input seo-settings-group__trigger" type="checkbox" value="1" {if $seo_settings[$storefront].main_enable|default:'' == '1'}checked="checked"{/if}>
+                            <span class="check-box__description">
+                                [`Main page`]
+                            </span>
+                                </label>
+                            </h3>
+                            <div class="field-group__helper">
+                                {include file=$variables_template_path base_variables=true}
+                            </div>
+                            <div class="field-group__fields">
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`Title`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <input name="seo_settings[{$storefront|escape}][main_meta_title]" type="text" class="large field-box__input-text" value="{$seo_settings[$storefront].main_meta_title|default:''|escape}" placeholder="{literal}{store_name} - интернет-магазин бытовой техники{/literal}">
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Description`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea name="seo_settings[{$storefront|escape}][main_meta_description]" class="field-box__text-area" placeholder="{literal}{store_name} - интернет-магазин бытовой техники с бесплатной доставкой по России и возможностью заказа по телефону: {store_phone}.{/literal}" rows="5">{$seo_settings[$storefront].main_meta_description|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Keywords`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea name="seo_settings[{$storefront|escape}][main_meta_keywords]" class="field-box__text-area" placeholder="{literal}интернет-магазин бытовой техники, интернет-магазин электроники.{/literal}" rows="5">{$seo_settings[$storefront].main_meta_keywords|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-group field-group_enable-helper field-group_extensible">
+                            <h3 class="field-group__header field-box">
+                                <label class="check-box field-box__field field-group__trigger">
+                                    <input name="seo_settings[{$storefront|escape}][categories_enable]" class="check-box__input seo-settings-group__trigger" type="checkbox" value="1" {if $seo_settings[$storefront].categories_enable|default:'' == '1'}checked="checked"{/if}>
+                            <span class="check-box__description">
+                                [`Category page`]
+                            </span>
+                                </label>
+                            </h3>
+                            <div class="field-group__helper">
+                                {include file=$variables_template_path base_variables=true categories_variables=true}
+                            </div>
+                            <div class="field-group__fields">
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`Title`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <input type="text" name="seo_settings[{$storefront|escape}][categories_meta_title]" class="large field-box__input-text" value="{$seo_settings[$storefront].categories_meta_title|default:''|escape}" placeholder="{literal}{category_seo_name} купить в интернет-магазине {store_name} {'| Страница {page_number}'|if_page_not_first}{/literal}"/>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Description`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][categories_meta_description]" placeholder="{literal}{category_seo_name} купить в интернет-магазине {store_name}{/literal}" rows="5">{$seo_settings[$storefront].categories_meta_description|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Keywords`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][categories_meta_keywords]" placeholder="{literal}{category_name|lower}, {category_seo_name|lower}{/literal}" rows="5">{$seo_settings[$storefront].categories_meta_keywords|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`Description`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="text-area_wysiwyg" name="seo_settings[{$storefront|escape}][categories_description]" placeholder="{literal}Описание категории, если оно не заполнено. Можно использовать синонимы, например: {'продукт','товар','изделие'}, они будут показываться рандомно, обновите страницу и увидите новое значение.{/literal}">{$seo_settings[$storefront].categories_description|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <div class="field-box__field">
+                                        <label class="check-box">
+                                            <input class="check-box__input" type="checkbox" name="seo_settings[{$storefront|escape}][categories_meta_overwrite]" value="1" {if $seo_settings[$storefront].categories_meta_overwrite|default:'' == '1'}checked="checked"{/if}/>
+                                    <span class="check-box__description check-box__description_tiny">
+                                        <span class="check-box__header">
+                                            [`Ignore title`]
+                                        </span>
+                                        [`Ignore meta title keywords description`]
+                                    </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-group field-group_enable-helper field-group_extensible">
+                            <h3 class="field-group__header field-box">
+                                <label class="check-box field-box__field field-group__trigger">
+                                    <input name="seo_settings[{$storefront|escape}][products_enable]" class="check-box__input seo-settings-group__trigger" type="checkbox" value="1" {if $seo_settings[$storefront].products_enable|default:'' == '1'}checked="checked"{/if}>
+                            <span class="check-box__description">
+                                [`Product page`]
+                            </span>
+                                </label>
+                            </h3>
+                            <div class="field-group__helper">
+                                {include file=$variables_template_path base_variables=true products_variables=true}
+                            </div>
+                            <div class="field-group__fields">
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`Title`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <input type="text" name="seo_settings[{$storefront|escape}][products_meta_title]" class="field-box__input-text large" value="{$seo_settings[$storefront].products_meta_title|default:''|escape}" placeholder="{literal}{product_seo_name}, {product_sku} купить по цене {product_price|currency} в интернет-магазине {store_name}{/literal}">
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Description`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][products_meta_description]" placeholder="{literal}{product_seo_name} купить в интернет-магазине {store_name}{/literal}" rows="5">{$seo_settings[$storefront].products_meta_description|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Keywords`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][products_meta_keywords]" placeholder="{literal}{product_name|lower}, {product_seo_name|lower}{/literal}" rows="5">{$seo_settings[$storefront].products_meta_keywords|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`Description`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="text-area_wysiwyg" name="seo_settings[{$storefront|escape}][products_description]" placeholder="{literal}Описание продукта, если оно не заполнено. Можно использовать синонимы, например: {'продукт','товар','изделие'}, они будут показываться рандомно, обновите страницу и увидите новое значение.{/literal}">{$seo_settings[$storefront].products_description|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <div class="field-box__field">
+                                        <label class="check-box">
+                                            <input class="check-box__input" type="checkbox" name="seo_settings[{$storefront|escape}][products_meta_overwrite]" value="1" {if $seo_settings[$storefront].products_meta_overwrite|default:'' == '1'}checked="checked"{/if}/>
+                                    <span class="check-box__description check-box__description_tiny">
+                                    <span class="check-box__header">
+                                        [`Ignore title`]
+                                    </span>
+                                    [`Ignore meta title keywords description`]
+                                    </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-group field-group_enable-helper field-group_extensible">
+                            <h3 class="field-group__header field-box">
+                                <label class="check-box field-box__field field-group__trigger">
+                                    <input name="seo_settings[{$storefront|escape}][static_enable]" class="check-box__input seo-settings-group__trigger" type="checkbox" value="1" {if $seo_settings[$storefront].static_enable|default:'' == '1'}checked="checked"{/if}>
+                            <span class="check-box__description">
+                                [`Static page`]
+                            </span>
+                                </label>
+                            </h3>
+                            <div class="field-group__helper">
+                                {include file=$variables_template_path base_variables=true static_variables=true}
+                            </div>
+                            <div class="field-group__fields">
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`Title`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <input type="text" name="seo_settings[{$storefront|escape}][static_meta_title]" class="field-box__input-text large" value="{$seo_settings[$storefront].static_meta_title|default:''|escape}" placeholder="{literal}{page_name} | интернет-магазин {store_name}{/literal}">
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Description`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][static_meta_description]" placeholder="{literal}{page_name} | интернет-магазин {store_name}{/literal}>" rows="5">{$seo_settings[$storefront].static_meta_description|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Keywords`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][static_meta_keywords]" placeholder="{literal}{page_name} | {page_name}{/literal}" rows="5">{$seo_settings[$storefront].static_meta_keywords|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-group field-group_enable-helper field-group_extensible">
+                            <h3 class="field-group__header field-box">
+                                <label class="check-box field-box__field field-group__trigger">
+                                    <input class="check-box__input" type="checkbox" name="seo_settings[{$storefront}][tags_enable]" value="1" {if $seo_settings[$storefront].tags_enable|default:'' == '1'}checked="checked"{/if}>
+                            <span class="check-box__description">
+                                [`Tag page`]
+                            </span>
+                                </label>
+                            </h3>
+                            <div class="field-group__helper">
+                                {include file=$variables_template_path base_variables=true tags_variables=true}
+                            </div>
+                            <div class="field-group__fields">
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`Title`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <input type="text" name="seo_settings[{$storefront|escape}][tags_meta_title]" class="large field-box__input-text" value="{$seo_settings[$storefront].tags_meta_title|default:''|escape}" placeholder="{literal}{tag_name} купить в {store_name} {' |Страница {page_number}'|if_page_not_first}{/literal}">
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Description`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][tags_meta_description]" placeholder="{literal}{tag_name} купить в {store_name}{/literal}" rows="5">{$seo_settings[$storefront].tags_meta_description|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Keywords`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][tags_meta_keywords]" placeholder="{literal}{tag_name}, {tag_name} купить{/literal}" rows="5">{$seo_settings[$storefront].tags_meta_keywords|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`Description`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="text-area_wysiwyg" name="seo_settings[{$storefront|escape}][tags_description]" placeholder="{literal}Описание тэга. Можно использовать синонимы, они будут показываться рандомно, обновите страницу и увидите новое значение.{/literal}">{$seo_settings[$storefront].tags_description|default:''|escape}</textarea>
+                                            [`For output insert code`] <span class="variable variable__name variable__name_tiny">{ldelim}shopSeoViewHelper::getTagDescription(){rdelim}</span> [`in`] <strong>search.html</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-group field-group_enable-helper field-group_extensible">
+                            <h3 class="field-group__header field-box">
+                                <label class="field-box__field field-group__trigger check-box">
+                                    <input class="check-box__input" type="checkbox" name="seo_settings[{$storefront|escape}][brands_enable]" value="1" {if $seo_settings[$storefront].brands_enable|default:'' == '1'}checked="checked"{/if}>
+                            <span class="check-box__description">
+                                [`Brand page`]
+                                <span class="hint">
+                                    /brand/*
+                                </span>
+                            </span>
+                                </label>
+                            </h3>
+                            <div class="field-group__helper">
+                                {include file=$variables_template_path base_variables=true brands_variables=true}
+                            </div>
+                            <div class="field-group__fields">
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`Title`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <input type="text" name="seo_settings[{$storefront|escape}][brands_meta_title]" class="large field-box__input-text" value="{$seo_settings[$storefront].brands_meta_title|default:''|escape}" placeholder="{literal}{brand_name} купить в {store_name}   {' | Страница {page_number}'|if_page_not_first}{/literal}">
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Description`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][brands_meta_description]" placeholder="{literal}{brand_name} купить в {store_name} {/literal}" rows="5">{$seo_settings[$storefront].brands_meta_description|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                                <div class="field-box">
+                                    <label class="field-box__label">
+                                        [`META Keywords`]
+                                    </label>
+                                    <div class="field-box__field">
+                                        <textarea class="field-box__text-area" name="seo_settings[{$storefront|escape}][brands_meta_keywords]" placeholder="{literal}{brand_name}, {brand_name} купить{/literal}" rows="5">{$seo_settings[$storefront].brands_meta_keywords|default:''|escape}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {/foreach}
+            </div>
+            <h2 class="seo-settings__sub-header">
+                [`Additional fields`]
+            </h2>
+            <div class="field-group">
+                <div class="field-group__fields">
+                    <div class="seo-settings__settings-fields">
+                        {foreach $seo_settings_fields as $id => $name}
+                            <div class="field-box">
+                                <label class="field-box__label">
+                                    [`Field`] №{$id|escape} [<a class="additional-fields__remove-field  link-box">[`delete`]</a>]
+                                </label>
+                                <div class="field-box__field">
+                                    <input name="seo_settings_fields[{$id|escape}]" type="text" class="field-box__input-text" value="{$name|escape}" />
+                                </div>
+                            </div>
+                        {/foreach}
+                    </div>
+                    <div class="field-box_disable-label">
+                        <div class="field-box__field">
+                            <a class="additional-fields__add-field link-box">
+                                <i class="icon16 add"></i>[`Add field`]
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h2 class="seo-settings__sub-header">
+                [`Options plugin`]
+            </h2>
+            <label class="check-box">
+                <input class="check-box__input" type="checkbox" name="seo_settings[general][category_subcategories_enable]" value="1" {if $seo_settings['general'].category_subcategories_enable|default:'' == '1'}checked="checked"{/if}/>
+                <span class="check-box__description">
+                    [`Enable subcategories rules`];
+                </span>
+            </label>
+            <label class="check-box">
+                <input class="check-box__input" type="checkbox" name="seo_settings[general][category_products_enable]" value="1" {if $seo_settings['general'].category_products_enable|default:'' == '1'}checked="checked"{/if}/>
+                    <span class="check-box__description">
+                        [`Enable products rules`];
+                    </span>
+            </label>
+            <label class="check-box">
+                <input class="check-box__input" type="checkbox" name="seo_settings[general][categories_replace_header_enable]" form="seo_settings_form" value="1" {if $seo_settings['general'].categories_replace_header_enable|default:'' == '1'}checked="checked"{/if}/>
+                <span class="check-box__description">
+                    [`Enable seo name for h1 categories`];
+                </span>
+            </label>
+            <label class="check-box">
+                <input class="check-box__input" type="checkbox" name="seo_settings[general][products_replace_header_enable]" form="seo_settings_form" value="1" {if $seo_settings['general'].products_replace_header_enable|default:'' == '1'}checked="checked"{/if}/>
+                <span class="check-box__description">
+                    [`Enable seo name for h1 products`];
+                </span>
+            </label>
+            <label class="check-box">
+                <input class="check-box__input" type="checkbox" name="seo_settings[general][category_additional_description_enable]" form="seo_settings_form" value="1" {if $seo_settings['general'].category_additional_description_enable|default:'' == '1'}checked="checked"{/if}/>
+                <span class="check-box__description">
+                    [`Enable category additional description`];<br />
+                    [`For output insert code`] <span class="variable variable__name variable__name_tiny">{ldelim}shopSeoViewHelper::getCategoryAdditionalDescription(){rdelim}</span> [`in`] <strong>category.html</strong>
+                </span>
+            </label>
+            <div class="form__footer">
+                <div class="submit-box">
+                    <input type="hidden" name="is_submit" value="1">
+                    <button type="submit" name="save" class="submit-box__button button green" value="1">
+                        [`Save`]
+                    </button>
+                    <div class="submit-box__status">
+                        <span class="form-status form-status_loading form-status_hidden">
+                            <span class="form-status__icon"><i class="icon16 loading"></i></span>
+                            <span class="form-status__text">[`Loading`]</span>
+                        </span>
+                        <span class="form-status form-status_success form-status_hidden">
+                            <span class="form-status__icon"><i class="icon16 yes"></i></span>
+                            <span class="form-status__text">[`Saved`]</span>
+                        </span>
+                        <span class="form-status form-status_error form-status_hidden">
+                            <span class="form-status__icon"></span>
+                            <span class="form-status__text">[`Error`]</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="clear-both"></div>
+</div>
+<div class="templates-box">
+    {if isset($storefronts_diff) and count($storefronts_diff) > 0}
+        <input class="seo-settings__storefronts-diff" type="hidden" value="{json_encode($storefronts_diff)|escape}"/>
+    {/if}
+    <div class="transfer-storefront-template">
+        <div class="transfer-storefront">
+            <input type="hidden" class="transfer-storefront__input" name="storefront" />
+            <p class="seo-settings-paragraph">[`Was change address`] <b class="transfer-storefront__storefront"></b></p>
+            <p>[`What doing with settings?`]</p>
+        </div>
+    </div>
+    <div class="transfer-controls-template">
+        <div class="transfer-storefront-controls">
+            <button type="button" class="transfer-storefront-controls__delete-storefront button red">[`Delete`]</button>
+            <button type="button" class="transfer-storefront-controls__do-transfer-storefront button green">[`Transfer to other storefront`]</button>
+            <select name="transfer_storefront">
+                {foreach $storefronts as $key => $storefront}
+                    {if $storefront != 'general'}
+                        <option value="{$storefront|escape}">
+                            {$storefront|escape}
+                        </option>
+                    {/if}
+                {/foreach}
+            </select>
+        </div>
+    </div>
+    <div class="help-block-template">
+        <div class="help-block">
+            {literal}
+                <h2>Полезная информация</h2>
+                <p>Правила, заданные в настройках плагина, работают в том случае, если мета-теги и/или описание товара, категории не заполнено, если есть необходимость перебить такие описания используйте флажок "Игнорировать персональные заголовки" в настройках плагина. (Возможность перебивать написанные правила имеется только для категорий или товаров) <strong>Если желаете отключить правило,</strong> оставьте поле пустым или снимите галочку у нужного раздела, при этом данные будут сохранены.
+                </p>
+                <p><strong>1) Использование модификаторов.</strong>
+                </p>
+                <p>Список доступных модификаторов указан ниже списка доступных переменных для определенного типа посадочной страницы.
+                </p>
+                <p><strong>Примеры использования:</strong><br>
+                </p>
+                <p><span class="variable variable__name">|if_page_not_first</span> - преобразует строку в пустую если страница первая, пример <span class="variable variable__name">{'Страница {page_number}'|if_page_not_first}</span>
+                </p>
+                <p><span class="variable variable__name">|currency</span> - преобразует число в денежный формат, пример <span class="variable variable__name">{product_price|currency}</span>
+                </p>
+                <p><span class="variable variable__name">{categories|sep_hyphen}</span> - выводит весь путь категорий через тире.<br>
+                </p>
+                <p>Так же есть возможность использования нескольких модификаторов одновременно.<br>
+                </p>
+                <p><strong>Дополнительный список:</strong>
+                </p>
+                <p><span class="variable variable__name">|reverse</span> - в обратном порядке
+                </p>
+                <p><span class="variable variable__name">|sep_backslash</span> - разделитель обратный слеш
+                </p>
+                <p><span class="variable variable__name">|sep_comma</span> - запятая
+                </p>
+                <p><span class="variable variable__name">|sep_hyphen</span> - тире
+                </p>
+                <p><span class="variable variable__name">|sep_slash</span> - слэш (по умолчанию)
+                </p>
+                <p><span class="variable variable__name">|sep_space</span> – пробел
+                </p>
+                <p><strong>2) Использование синонимов</strong><br>
+                </p>
+                <p> Вы можете настроить формирование описаний с помощью синонимов, пример конструкции "Можно использовать синонимы, например: <span class="variable variable__name">{'продукт','товар','изделие'}</span>, они будут показываться рандомно, обновите страницу и увидите новое значение.
+                </p>
+                <p><strong>3) Вывод дополнительного описания для категорий</strong>
+                </p>
+                <p>Для вывода на сайт дополнительного описания категории, включите возможность в настройках плагина и вставьте код <span class="variable variable__name">{shopSeoViewHelper::getCategoryAdditionalDescription()}</span> в шаблон категорий <strong>category.html</strong>
+                </p>
+                <p><strong>4) Вывод описания для тегов</strong>
+                </p>
+                <p>Для вывода описания для тегов, сформируйте шаблон формирования описаний и вставьте код <span class="variable variable__name">{shopSeoViewHelper::getTagDescription()}</span>  в шаблон <strong>search.html</strong>
+                </p>
+                <p><strong> </strong><strong>5) Использование переменных витрин в шаблонах</strong>
+                </p>
+                <p>Если Вы хотите использовать переменные витрин в шаблонах темы дизайна, используйте код вида <span class="variable variable__name">{shopSeoViewHelper::parseTemplate('{storefront_name}')}</span> где storefront_name – название переменной.
+                </p>
+                <p><strong>6) Дополнительные опции</strong><br>
+                </p>
+                <p>1) Для более гибкой настройки оптимизации страниц каталога или карточек товара, Вы можете включить возможность указывать правила для подкатегорий или товаров определенной категории.
+                </p>
+                <p>2) Для вывода альтернативных категорий в качестве заголовка H1, включите соответствующие галки в дополнительных опциях плагина.
+                </p>
+            {/literal}
+        </div>
+    </div>
+    <div class="help-controls-template">
+        <button type="submit" class="button green">[`Close`]</button>
+    </div>
+    <div class="new-field-template">
+        <div class="field-box">
+            <label class="field-box__label">
+                [`New field`] [<a class="additional-fields__remove-field link-box">[`delete`]</a>]
+            </label>
+            <div class="field-box__field">
+                <input name="seo_settings_new_fields[]" type="text" class="field-box__input-text" />
+            </div>
+        </div>
+    </div>
+</div>

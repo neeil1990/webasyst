@@ -1,0 +1,72 @@
+#wa {
+    min-width: 950px;
+}
+
+.seo-settings__links {
+    float: right;
+    text-align: right;
+    cursor: pointer;
+}
+
+.seo-settings__link {
+    margin-left: 15px;
+}
+
+.seo-settings__developer {
+    margin-top: 10px;
+}
+
+.seo-settings__header {
+    margin-bottom: 25px;
+}
+
+.seo-settings__sub-header {
+    margin-bottom: 15px;
+}
+
+.seo-settings__content {
+    max-width: 1300px;
+}
+
+.seo-settings__title {
+    padding-bottom: 10px;
+}
+
+.icon-outsource-link {
+    width: 11px;
+    height: 11px;
+    background: url('../img/icons/outsource-link.png');
+}
+
+.icon-help,
+.icon-support,
+.icon-review {
+    width: 22px;
+    height: 22px;
+}
+
+.icon-help {
+    background: url('../img/icons/help.png');
+}
+
+.icon-support {
+    background: url('../img/icons/support.png');
+}
+
+.icon-review {
+    background: url('../img/icons/review.png');
+}
+
+.help-block,
+.help-block p {
+    font-size: 10pt;
+    font-family: 'Helvetica Neue', 'Trebuchet MS', Arial, sans-serif;
+}
+
+.help-block p {
+    margin-bottom: 10px;
+}
+
+.help-block .variable {
+    line-height: 1;
+}
