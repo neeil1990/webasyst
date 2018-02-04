@@ -1,0 +1,115 @@
+<div class="block double-padded">
+    <h1>[`Brands`]</h1>
+    <br>
+
+
+    <table class="zebra">
+        <thead>
+            <tr class="header">
+                <th>{_w('Name')}</th>
+                <th>[`Image`]</th>
+                <th>{_w('Summary')}</th>
+                <th>{_w('title')}</th>
+                <th class="min-width">
+                    {if $wa->userRights('settings')}
+                    <a href="javascript:void(0)" id="product-list-table-settings"><i class="icon16 settings"></i></a>
+                    {/if}
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        {foreach $brands as $b}
+
+            <tr>
+                <td>
+                    <a href="#/brand/{$b.id}/">{$b.name|escape}</a>
+                </td>
+                <td>
+                    {if $b.image}
+                        <img style="max-width: 200px" src="{$wa_url}wa-data/public/shop/brands/{$b.id}/{$b.id}{$b.image}">
+                    {/if}
+                </td>
+                <td>{$b.summary|escape}</td>
+                <td>{$b.title|escape}</td>
+            </tr>
+        {/foreach}
+        </tbody>
+    </table>
+
+</div>
+
+<script>
+{literal}
+$(function(){
+
+    var features_initialized = false;
+    var $dialog = $('#product-list-settings-dialog');
+ $('#product-list-table-settings').click(function() {
+    // Initialize features list (or autocomplete) if not initialized yet
+    if (!features_initialized) {
+        features_initialized = true;
+        var $template = $dialog.find('.feature-checkbox-wrapper.template');
+        var new_elements = $.map(additional_columns, function(col) {
+            var $wr = $template.clone().removeClass('hidden template');
+            var $cb = $wr.find('input:checkbox');
+            $cb[0].name = $cb[0].name.replace('%ID%', col.id);
+            $cb[0].checked = col.enabled;
+            $wr.find('.column-name').text(col.name);
+            return $wr[0];
+        });
+        $template.before($(new_elements));
+
+        $dialog.find(':input.js-autocomplete-feature').autocomplete({
+            source: '?action=autocomplete&type=feature&options[single]=1',
+            minLength: 2,
+            delay: 300,
+            select: function (event, ui) {
+                /**
+                 * @this {HTMLInputElement}
+                 */
+                $.shop.trace('autocomplete', ui.item);
+                var $element = $dialog.find(':input[name="columns\[feature_'+ui.item.id+'\]"]');
+
+                if($element.length) {
+                    $element.parents('div.value').addClass('highlighted');
+                    setTimeout(function () {
+                        $element.parents('div.value').removeClass('highlighted')
+                    }, 3000);
+                } else {
+                    $element = $template.clone().removeClass('hidden template');
+                    var $cb = $element.find('input:checkbox');
+                    $cb[0].name = $cb[0].name.replace('%ID%', 'feature_' + ui.item.id);
+                    $cb[0].checked = true;
+                    $element.find('.column-name').text(ui.item.name).attr('title', ui.item.value);
+
+                    $template.before($($element[0]));
+                }
+                $(this).val('').change();
+                return false;
+            }
+        });
+    }
+
+    $dialog.waDialog({
+        disableButtonsOnSubmit: true,
+        onSubmit: function () {
+            var $form = $dialog.find('form');
+            var $loading = $('<i class="icon16 loading"></i>').insertAfter($form.find(':submit:first'));
+            $.post($form.attr('action'), $form.serialize(), function() {
+                $.products.dispatch();
+                $dialog.trigger('close');
+                $loading.remove();
+            });
+            return false;
+        },
+        onCancel: function() {
+            //TODO uncheck not saved items
+        }
+    });
+});
+
+});
+
+{/literal}
+
+</script>

@@ -1,0 +1,14 @@
+cec1414bfa067074a712abf5f4ddfe2e *img/invoice16.png
+a1751e1f10a3b96b05d0401c97e72008 *lib/.htaccess
+a5bcff50ab773af6cd7c46e666fd92be *lib/actions/printform/shopInvoiceruPluginPrintformDisplay.action.php
+38f80bb60483f3610b79d6160734f05e *lib/config/build.php
+4fb83fa6dc91cc124b34f5fa06204de9 *lib/config/plugin.php
+6e387bca542c569b4d8aee057eef1a1a *lib/config/requirements.php
+89a231673fceee3ddeebc0575b264149 *lib/config/settings.php
+fccb2432662293c8e676b6f177c3a36d *lib/shopInvoiceru.plugin.php
+ccb9c1d96f29248b9fc3591c39fc3422 *lib/updates/1431521862.php
+a1751e1f10a3b96b05d0401c97e72008 *templates/.htaccess
+576657319784445ae72c11190e1090ad *templates/actions/printform/PrintformDisplay.html
+77f9047411f1e52f8cfb107101f6c191 *templates/actions/printform/css/printform.css
+25644bbc1954f2cc306910661a70d876 *templates/actions/printform/js/printform.js
+40e3dd578b512dc270d01d75672eb7e3 *templates/actions/printform/template.html

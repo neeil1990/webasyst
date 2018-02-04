@@ -24,13 +24,13 @@
 
                         </li>
                         {/foreach}
-                        {if !empty($installer)}
                         <li class="bordered-top" style="padding-top: 10px; padding-bottom: 10px; margin-top: 7px; padding-left: 8px;">
-                            <a href="#/shipping/plugins/" style="text-align: center;">[`Browse shipping plugins...`]</a>
-                            <br>
+                            {if !empty($installer)}
+                                <a href="#/shipping/plugins/" style="text-align: center;">[`Browse shipping plugins...`]</a>
+                                <br>
+                            {/if}
                             <span class="hint align-center">[`Multiple instances of every shipping option with custom settings can be created.`]</span>
                         </li>
-                        {/if}
                     </ul>
                 </li>
             </ul>
@@ -46,17 +46,33 @@
             <tr data-id="{$id}">
                 <td class="min-width"><i class="icon16 sort"></i></td>
                 <td class="min-width">
-                    {if !empty($plugin.logo)}
-                        <img src="{$plugin.logo}" class="s-payment-shipping-logo">
-                    {elseif !empty($plugin.img)}
-                        <img src="{$plugin.img}" class="s-payment-shipping-logo">
+                    {if empty($plugin.installed)}
+                        <i class="icon16 exclamation"></i>
+                    {else}
+                        {if !empty($plugin.logo)}
+                            <img src="{$plugin.logo}" class="s-payment-shipping-logo">
+                        {elseif !empty($plugin.img)}
+                            <img src="{$plugin.img}" class="s-payment-shipping-logo">
+                        {/if}
                     {/if}
                 </td>
                 <td>
-                    <h3 class="large{if empty($plugin.status)} gray{/if}">
-                       {$plugin.name|escape}
-                       {if empty($plugin.status)}([`disabled`]){/if}
+                    <h3 class="large {if empty($plugin.status)} gray{/if}">
+                        {$plugin.name|escape}
+                        {if empty($plugin.status)}([`disabled`]){/if}
+                        {if empty($plugin.installed)}
+                            <span class="red">[`deleted`]</span>
+                        {/if}
                     </h3>
+                    {if empty($plugin.installed)}
+                        <span><i class="icon16 info"></i>
+                            {if $installer}
+                                {"#/shipping/plugins/"|string_format:'[`You can remove settings or install the <a href="%s" class="inline">plugin</a>.`]'}
+                            {else}
+                                [`You can remove settings or install the plugin`]
+                            {/if}
+                        </span>
+                    {/if}
                     <p class="hint">{strip_tags($plugin.description)}</p>
                 </td>
                 <td>
@@ -69,13 +85,26 @@
             </tr>
             {foreachelse}
             <tr>
-                <td>
+                <td colspan="4">
                     <em class="gray">[`No shipping options are defined.`]</em>
                 </td>
             </tr>
             {/foreach}
             </tbody>
+            {if $instances}
+                <tfoot>
+                <tr>
+                    <td colspan="4" style="background-color: #fff !important;">
+                        <p style="margin-top:20px;" class="hint">
+                            {sprintf_wp("Rounding of fractional shipping costs can be set up in %scurrency settings%s.", '<a href="#/currencies/">', '</a>')}
+                        </p>
+                    </td>
+                </tr>
+                </tfoot>
+            {/if}
         </table>
+
+
 
     <div id="s-settings-shipping-setup" class="fields form"></div>
 
@@ -85,9 +114,9 @@
 
 
 <script type="text/javascript" src="{$wa_app_static_url}js/settings/shipping.js?{$wa->version()}"></script>
-<script type="text/javascript">
-document.title = '{"[`Shipping`]"|cat:" — ":{$wa->accountName(false)}|escape:'javascript'}';
-if(typeof($)!='undefined') {
-$.settings.shippingInit();
-}
-</script>
+<script type="text/javascript">(function() { "use strict";
+    document.title = "[`Shipping`] — {$wa->accountName(false)|escape:javascript}";
+    if (typeof(window.$) != 'undefined') {
+        $.settings.shippingInit();
+    }
+}());</script>

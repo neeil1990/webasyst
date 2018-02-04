@@ -57,6 +57,25 @@
                     }
                 }
             });
+
+            $(function () {
+                $("#maincontent").on('click', '.s-alert-close', function () {
+                    var alerts = $.storage.get('shop/alerts');
+                    var $item = $(this).parent();
+                    if (!alerts) {
+                        alerts = [];
+                    }
+                    alerts.push($item.data('alert'));
+                    alerts = alerts.filter(function (elem, index, self) {
+                        return (elem != null) && (index == self.indexOf(elem));
+                    });
+                    $.storage.set('shop/alerts', alerts);
+                    $item.remove();
+                    return false;
+                });
+            });
+
+            this.checkAlerts();
         },
 
         onPageNotFound: function() {
@@ -166,6 +185,14 @@
             this.skipDispatch = n;
         },
 
+        // Change location hash without triggering dispatch
+        forceHash: function(hash) {
+            if (location.hash != hash) {
+                this.skipDispatch++;
+                $.wa.setHash(hash);
+            }
+        },
+
         /** Implements #hash-based navigation. Called every time location.hash changes. */
         dispatch: function (hash) {
             if (this.skipDispatch > 0) {
@@ -269,8 +296,8 @@
             });
         },
 
-        ordersNewAction: function () {
-            this.load('?module=order&action=edit', function() {
+        ordersNewAction: function (params) {
+            this.load('?module=order&action=edit'+(params ? '&'+params : ''), function() {
                 if ($.order_list) {
                     $.order_list.finit();
                 }
@@ -384,10 +411,14 @@
                 }, 250);
 
                 showOrdersViewToggle();
+                showOrdersSortMenu();
 
 
                 $('.level2').show();
                 $('#s-sidebar').width(200).show();
+
+
+                self.checkAlerts();
             });
 
             function showOrdersViewToggle() {
@@ -402,6 +433,30 @@
                     }
                 }
             }
+
+            function showOrdersSortMenu() {
+                var $ordersSortMenu = $("#s-orders-sort"),
+                    is_orders_page = $("#s-order, #s-orders").length;
+
+                if ($ordersSortMenu.length) {
+                    if (is_orders_page) {
+                        $ordersSortMenu.css("visibility", "visible");
+                    } else {
+                        $ordersSortMenu.css("visibility", "hidden");
+                    }
+                }
+            }
+        },
+
+
+        checkAlerts: function () {
+            var alerts = $.storage.get('shop/alerts');
+            $.shop.trace('checkAlerts',alerts);
+            $('.s-alert').each(function () {
+                if ($.inArray($(this).data('alert'), alerts) == -1) {
+                    $(this).show();
+                }
+            });
         }
     };
 })(jQuery);

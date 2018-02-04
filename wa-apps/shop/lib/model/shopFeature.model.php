@@ -13,6 +13,10 @@ class shopFeatureModel extends waModel
     const TYPE_DIVIDER = 'divider';
     const TYPE_COLOR = 'color';
 
+    const STATUS_PUBLIC = 'public';
+    const STATUS_HIDDEN = 'hidden';
+    const STATUS_PRIVATE = 'private';
+
     private static $instances = array();
 
     protected $table = 'shop_feature';
@@ -55,6 +59,7 @@ class shopFeatureModel extends waModel
             'type'       => self::TYPE_VARCHAR,
             'selectable' => 0,
             'multiple'   => 0,
+            'status'     => 'public',
         );
         $feature = array_merge($default, $feature);
         $feature['selectable'] = intval($feature['selectable']);
@@ -75,8 +80,9 @@ class shopFeatureModel extends waModel
                 foreach ($child_features as $child_feature) {
                     $n = preg_replace('/^.*(\.\d)$/', '$1', $child_feature['code']);
                     $data = array(
-                        'code' => $feature['code'].$n,
-                        'name' => $feature['name'].$n,
+                        'code'   => $feature['code'].$n,
+                        'name'   => $feature['name'].$n,
+                        'status' => $feature['status'],
                     );
                     $this->updateById($child_feature['id'], $data);
                 }
@@ -105,9 +111,11 @@ class shopFeatureModel extends waModel
     public function getUniqueCode($code, $id = null)
     {
         if ($code = preg_replace('/[^a-zA-Z0-9_]+/', '_', trim(waLocale::transliterate($code)))) {
-            if ($code == '_') {
-                $code = 'f_';
+
+            if (!self::isCodeAllowed($code)) {
+                $code = ($code === '_' ? 'f' : 'f_').$code;
             }
+
             $sql = <<<SQL
             SELECT `id`, LOWER(`code`) AS `code`
             FROM `{$this->table}`
@@ -132,6 +140,42 @@ SQL;
         }
         return $unique_code;
     }
+
+    /**
+     * Is string allowed for use as code for feature
+     * @param $code
+     * @return bool
+     */
+    public static function isCodeAllowed($code)
+    {
+        // check for prefixes
+        $forbidden_prefixes = array(
+            'utm_'
+        );
+        foreach ($forbidden_prefixes as $prefix) {
+            if (strpos($code, $prefix) === 0) {
+                return false;
+            }
+        }
+
+        // check for whole words
+        $forbidden = array('_', 'tag', 'sort', 'order', 'page');
+        $db_path = wa()->getAppPath('lib/config/db.php', 'shop');
+        if (file_exists($db_path)) {
+            $db = include($db_path);
+            foreach (array('shop_product', 'shop_category') as $tbl) {
+                $forbidden += array_keys($db[$tbl]);
+            }
+        }
+        $forbidden = array_fill_keys(array_unique($forbidden), true);
+        if (isset($forbidden[$code])) {
+            return false;
+        }
+
+        return true;
+
+    }
+
 
     public function getByCode($code)
     {
@@ -207,6 +251,70 @@ SQL;
     }
 
     /**
+     * @param mixed [string] $options
+     * @param int $limit
+     * @return array
+     */
+    public function getFilterFeatures($options = array(), $limit = 500)
+    {
+        $where = array(
+            'parent_id IS NULL',
+            'union' => array(),
+        );
+        $options += array(
+            'status'   => self::STATUS_PUBLIC,
+            'count'    => true,
+            'interval' => false,
+        );
+        foreach ($options as $field => $value) {
+            switch ($field) {
+                case 'type_id':
+                    //join
+                    break;
+                case 'status':
+                    $where[$field] = $this->getWhereByField($field, $value);
+                    break;
+                case 'code':
+                case 'id':
+                    $where/*['union']*/
+                    [$field] = $this->getWhereByField($field, $value);
+                    break;
+                case 'interval':
+                    if (!empty($value)) {
+                        $where['union'][] = sprintf("type='%s'", self::TYPE_DOUBLE);
+                        $where['union'][] = sprintf("type LIKE '%s.%%'", self::TYPE_DIMENSION);
+                        $where['union'][] = sprintf("type LIKE '%s.%%'", self::TYPE_RANGE);
+                        // } else {
+                        $where['union'][] = 'selectable=1';
+                        $where['union'][] = sprintf("type='%s'", self::TYPE_BOOLEAN);
+                    }
+                    break;
+                case 'count':
+                    if (!empty($value)) {
+                        if ($value === true) {
+                            $where[$field] = '`count` > 0';
+                        } else {
+                            $where[$field] = sprintf('`count` > %d', max(1, $value));
+                        }
+                    }
+                    break;
+                default:
+                    $where[$field] = $this->getWhereByField($field, $value);
+                    break;
+
+            }
+        }
+        if (count($where['union'])) {
+            $where['union'] = '('.implode(') OR (', $where['union']).')';
+        } else {
+            unset($where['union']);
+        }
+
+        $where = '('.implode(') AND (', $where).')';
+        return $this->select('*')->where($where)->limit($limit)->order('count DESC')->fetchAll('id');
+    }
+
+    /**
      *
      * Get features with their values
      * @param $field
@@ -266,7 +374,6 @@ SQL;
             $feature['values'] = array();
         }
         unset($feature);
-
         $types = $this->groupByValueType($features);
         foreach ($types as $type => $ids) {
             if ($model = self::getValuesModel($type)) {
@@ -429,9 +536,14 @@ SQL;
      */
     public function getValueId($feature, $value, $update = false)
     {
-        $id = self::getValuesModel($feature['type'])->getValueId($feature['id'], $value, $feature['type'], $update);
-        if ($update) {
-            $this->recount($feature);
+        $model = self::getValuesModel($feature['type']);
+        if ($model) {
+            $id = $model->getValueId($feature['id'], $value, $feature['type'], $update);
+            if ($update) {
+                $this->recount($feature);
+            }
+        } else {
+            $id = null;
         }
         return $id;
     }
@@ -686,7 +798,7 @@ SQL;
                 'available'  => 1,
                 'subtype'    => self::extendSubtypes($single_types, self::TYPE_DIMENSION),
             );
-            
+
             /* divider */
             $types[] = array(
                 'name'       => _w('Divider'),

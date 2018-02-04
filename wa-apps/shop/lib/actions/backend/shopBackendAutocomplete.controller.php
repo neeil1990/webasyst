@@ -63,7 +63,7 @@ class shopBackendAutocompleteController extends waController
                         'value'                  => $item['value'],
                         'label'                  => $item['label'],
                         'amount'                 => wa_currency($item['total'], $item['currency']),
-                        'state'                 => ifset($item['state']['name'], $item['state_id']),
+                        'state'                  => ifset($item['state']['name'], $item['state_id']),
                         'autocomplete_item_type' => 'order',
                     );
 
@@ -137,12 +137,15 @@ class shopBackendAutocompleteController extends waController
         }
 
         // try find with LIKE %query%
-        if (!$products) {
-            $products = $product_model
+        if (count($products) < $limit) {
+            $data = $product_model
                 ->select($fields)
                 ->where("name LIKE '%$q%'")
                 ->limit($limit)
-                ->fetchAll();
+                ->fetchAll('id');
+
+            // not array_merge, because it makes first reset numeric keys and then make merge
+            $products = $products + $data;
         }
         $config = wa('shop')->getConfig();
         /**
@@ -196,6 +199,10 @@ class shopBackendAutocompleteController extends waController
 
     public function ordersIdAutocomplete($q)
     {
+        if (!wa()->getUser()->getRights('shop', 'orders')) {
+            return array();
+        }
+
         $limit = 5;
 
         // first, assume $q is encoded $order_id, so decode
@@ -246,6 +253,10 @@ class shopBackendAutocompleteController extends waController
 
     public function ordersAutocomplete($q)
     {
+        if (!wa()->getUser()->getRights('shop', 'orders')) {
+            return array();
+        }
+
         // search by:
         // 1. order_id,
         // 2. email, phone, firstname, lastname, name
@@ -347,13 +358,13 @@ class shopBackendAutocompleteController extends waController
         $sqls = array();
 
         // Name starts with requested string
-        $sqls[] = "SELECT c.id, c.name, c.firstname, c.middlename, c.lastname
+        $sqls[] = "SELECT c.id, c.name, c.firstname, c.middlename, c.lastname, c.photo
                    FROM wa_contact AS c
                    WHERE c.name LIKE '".$m->escape($q, 'like')."%'
                    LIMIT {LIMIT}";
 
         // Email starts with requested string
-        $sqls[] = "SELECT c.id, c.name, e.email, c.firstname, c.middlename, c.lastname
+        $sqls[] = "SELECT c.id, c.name, e.email, c.firstname, c.middlename, c.lastname, c.photo
                    FROM wa_contact AS c
                        JOIN wa_contact_emails AS e
                            ON e.contact_id=c.id
@@ -363,7 +374,7 @@ class shopBackendAutocompleteController extends waController
         // Phone contains requested string
         if (preg_match('~^[wp0-9\-\+\#\*\(\)\. ]+$~', $q)) {
             $dq = preg_replace('/[^\d]+/', '', $q);
-            $sqls[] = "SELECT c.id, c.name, d.value as phone, c.firstname, c.middlename, c.lastname
+            $sqls[] = "SELECT c.id, c.name, d.value as phone, c.firstname, c.middlename, c.lastname, c.photo
                        FROM wa_contact AS c
                            JOIN wa_contact_data AS d
                                ON d.contact_id=c.id AND d.field='phone'
@@ -372,13 +383,13 @@ class shopBackendAutocompleteController extends waController
         }
 
         // Name contains requested string
-        $sqls[] = "SELECT c.id, c.name, c.firstname, c.middlename, c.lastname
+        $sqls[] = "SELECT c.id, c.name, c.firstname, c.middlename, c.lastname, c.photo
                    FROM wa_contact AS c
                    WHERE c.name LIKE '_%".$m->escape($q, 'like')."%'
                    LIMIT {LIMIT}";
 
         // Email contains requested string
-        $sqls[] = "SELECT c.id, c.name, e.email, c.firstname, c.middlename, c.lastname
+        $sqls[] = "SELECT c.id, c.name, e.email, c.firstname, c.middlename, c.lastname, c.photo
                    FROM wa_contact AS c
                        JOIN wa_contact_emails AS e
                            ON e.contact_id=c.id
@@ -403,10 +414,11 @@ class shopBackendAutocompleteController extends waController
                     $phone && $phone = '<i class="icon16 phone"></i>'.$phone;
                     $email && $email = '<i class="icon16 email"></i>'.$email;
                     $result[$c['id']] = array(
-                        'id'    => $c['id'],
-                        'value' => $c['id'],
-                        'name'  => $c['name'],
-                        'label' => implode(' ', array_filter(array($name, $email, $phone))),
+                        'id'        => $c['id'],
+                        'value'     => $c['id'],
+                        'name'      => $c['name'],
+                        'photo_url' => waContact::getPhotoUrl($c['id'], $c['photo'], 96),
+                        'label'     => implode(' ', array_filter(array($name, $email, $phone))),
                     );
                     if (count($result) >= $limit) {
                         break 2;
@@ -456,11 +468,13 @@ SQL;
                 'count' => _w('%d value', '%d values', $f['count']),
             );
 
+
             $result[] = array(
                 'id'    => $f['id'],
                 'value' => $code,
                 'name'  => $f['name'],
-                'label' => implode('; ', array_filter($label)),
+                'label' => sprintf('<span title="%s; %s">%s </span><span class="hint">%s</span>', $label['type'], $label['count'], $label['name'], $code),
+                'type'  => $f['type'],
             );
         }
 
@@ -516,6 +530,9 @@ SQL;
 
     public function customersAutocomplete($q)
     {
+        if (!wa()->getUser()->getRights('shop', 'customers')) {
+            return array();
+        }
         $result = array();
         $hashes = array();
 
@@ -558,13 +575,13 @@ SQL;
             }
         }
 
-        if ($used_hash['address']) {
+        if (!empty($used_hash['address'])) {
             $address_field = waContactFields::get('address');
         }
-        if ($used_hash['phone']) {
+        if (!empty($used_hash['phone'])) {
             $phone_field = waContactFields::get('phone');
         }
-        if ($used_hash['email|name']) {
+        if (!empty($used_hash['email|name'])) {
             $email_field = waContactFields::get('email');
         }
 

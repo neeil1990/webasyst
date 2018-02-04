@@ -1,0 +1,90 @@
+<div class="helper">
+    <h5 class="helper__header">[`Variables`]</h5>
+    <div class="helper__content">
+        {if isset($categories_variables) and $categories_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">{category_name}</span> - [`category name`]</p>
+            <p class="variable"><span class="variable__name">{category_seo_name}</span> - [`category SEO name`]</p>
+            <p class="variable"><span class="variable__name">{parent_category_name}</span> - [`parent category name`]</p>
+            <p class="variable"><span class="variable__name">{root_category_name}</span> - [`root category name`]</p>
+            <p class="variable"><span class="variable__name">{parent_categories}</span> - [`parent categories`]</p>
+            <p class="variable"><span class="variable__name">{products_count}</span> - [`products count`]</p>
+            <p class="variable"><span class="variable__name">{page_number}</span> - [`page number`]</p>
+            <p class="variable"><span class="variable__name">{min_price}</span> - [`min price`]</p>
+        {/literal}
+        {/if}
+        {if isset($products_variables) and $products_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">{product_name}</span> - [`product name`]</p>
+            <p class="variable"><span class="variable__name">{product_seo_name}</span> - [`product SEO name`]</p>
+            <p class="variable"><span class="variable__name">{product_price}</span> - [`product price`]</p>
+            <p class="variable"><span class="variable__name">{product_sku}</span> - [`product sku`]</p>
+            <p class="variable"><span class="variable__name">{page_name}</span> - [`page name`]</p>
+            <p class="variable"><span class="variable__name">{category_name}</span> - [`category name`]</p>
+            <p class="variable"><span class="variable__name">{category_seo_name}</span> - [`category SEO name`]</p>
+            <p class="variable"><span class="variable__name">{root_category_name}</span> - [`root category name`]</p>
+            <p class="variable"><span class="variable__name">{root_category_seo_name}</span> - [`root category SEO name`]</p>
+            <p class="variable"><span class="variable__name">{categories}</span> - [`categories path`]</p>
+        {/literal}
+        {/if}
+        {if isset($static_variables) and $static_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">{page_name}</span> - [`page name`]</p>
+        {/literal}
+        {/if}
+        {if isset($tags_variables) and $tags_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">{tag_name}</span> - [`tag name`]</p>
+            <p class="variable"><span class="variable__name">{page_number}</span> - [`page number`]</p>
+        {/literal}
+        {/if}
+        {if isset($brands_variables) and $brands_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">{brand_name}</span> - [`brand name`]</p>
+            <p class="variable"><span class="variable__name">{category_name}</span> - [`category name, if exists`]</p>
+            <p class="variable"><span class="variable__name">{page_number}</span> - [`page number`]</p>
+        {/literal}
+        {/if}
+        {if isset($base_variables) and $base_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">{store_name}</span> - [`store name`]</p>
+            <p class="variable"><span class="variable__name">{store_phone}</span> - [`store phone`]</p>
+            <p class="variable"><span class="variable__name">{storefront_name}</span> - [`storefront name`]</p>
+        {/literal}
+            {foreach $seo_settings_fields as $id => $name}
+                <p class="variable"><span class="variable__name">{ldelim}storefront_field_{$id}{rdelim}</span> - {$name}</p>
+            {/foreach}
+        {/if}
+    </div>
+    <h5 class="helper__header">[`Modifiers`]</h5>
+    <div class="helper__content">
+        {if isset($base_variables) and $base_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">|lower</span> - [`lower case`]</p>
+        {/literal}
+        {/if}
+        {if (isset($categories_variables) and $categories_variables) or (isset($tags_variables) and $tags_variables) or (isset($brands_variables) and $brands_variables)}
+        {literal}
+            <p class="variable"><span class="variable__name">|if_page_not_first</span> - [`if page not first`]</p>
+        {/literal}
+        {literal}
+            <p class="variable"><span class="variable__name">|if_page_first</span> - [`if page first`]</p>
+        {/literal}
+        {/if}
+        {if isset($products_variables) and $products_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">|if_product_page_is_open</span> - [`if product page is open`]</p>
+        {/literal}
+        {/if}
+        {if isset($brands_variables) and $brands_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">|if_brand_category_is_open</span> - [`if brand category is open`]</p>
+        {/literal}
+        {/if}
+        {if isset($products_variables) and $products_variables}
+        {literal}
+            <p class="variable"><span class="variable__name">|currency</span> - [`currency`]</p>
+        {/literal}
+        {/if}
+    </div>
+</div>

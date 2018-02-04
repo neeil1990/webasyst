@@ -1,0 +1,14 @@
+<?php
+return array(
+ 'name' => 'Иконка, изображение и баннер для категории',
+ 'img' => 'img/wmimageincat.png',
+ 'description'=>'размеры и генерация эскизов',
+ 'vendor' => 873332,
+ 'version'=>'1.1',
+ 'shop_settings'=>true,
+ 'frontend' => true,
+ 'handlers' => array(
+  'backend_category_dialog' => 'backendCategoryDialog',  
+  'category_save' => 'SaveCategorySettings',
+ ),
+);

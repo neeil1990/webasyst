@@ -2,7 +2,7 @@
 
 /**
  * Note: all prices in this table (total, tax, shipping, discount)
- * are stored in shop_order.curency, not the default shop currency.
+ * are stored in shop_order.currency, not the default shop currency.
  * shop_order.rate contains the currency rate valid at the time of the order.
  */
 class shopOrderModel extends waModel
@@ -46,6 +46,13 @@ class shopOrderModel extends waModel
         return $this->query($sql)->fetchField('offset');
     }
 
+    /**
+     * @deprecated since version 7.1
+     * @param string $fields
+     * @param array $options
+     * @return array
+     * @throws waException
+     */
     public function getList($fields = "*", $options = array())
     {
         $options += $this->getDefaultSearchOptions();
@@ -89,11 +96,11 @@ class shopOrderModel extends waModel
 
         if ($item_fields) {
             $order_id = null;
-            foreach ($this->query("
+            $sql = "
                 SELECT $item_fields, id, order_id FROM `shop_order_items`
                 WHERE order_id IN ('".implode("','", array_keys($data))."')
-                ORDER BY order_id"
-            ) as $item) {
+                ORDER BY order_id";
+            foreach ($this->query($sql) as $item) {
                 if ($order_id != $item['order_id']) {
                     $order_id = $item['order_id'];
                     unset($item['order_id']);
@@ -349,11 +356,18 @@ SQL;
         }
 
         $order_items_model = new shopOrderItemsModel();
-        $order['items'] = $order_items_model->getItems($id, $extend);
+        $order['items'] = $order_items_model->getItems($extend ? $order : $order['id'], $extend);
+
+        $order['items_total_discount'] = 0.0;
 
         if ($escape) {
             if (!empty($order['items'])) {
                 foreach ($order['items'] as &$product) {
+                    if (!empty($product['item']['total_discount'])) {
+                        $product['item']['total_discount'] = floatval($product['item']['total_discount']);
+                        $order['items_total_discount'] += $product['item']['total_discount'];
+                    }
+
                     if (!empty($product['name'])) {
                         $product['name'] = htmlspecialchars($product['name']);
                     }
@@ -375,6 +389,8 @@ SQL;
                             }
                             if (!empty($service['item']['name'])) {
                                 $service['item']['name'] = htmlspecialchars($service['item']['name']);
+                                $service['item']['total_discount'] = floatval($service['item']['total_discount']);
+                                $order['items_total_discount'] += $service['item']['total_discount'];
                             }
                             if (!empty($service['variants'])) {
                                 foreach ($service['variants'] as &$variant) {
@@ -480,6 +496,7 @@ SQL;
 
         if ($id) {
             $items_model = new shopOrderItemsModel();
+
             $items_model->update($data['items'], $id);
             unset($data['items']);
             $diff = array_diff_assoc($data, $this->getById($id));
@@ -501,42 +518,41 @@ SQL;
 
     public function returnProductsToStocks($order_id)
     {
-        $order_params_model = new shopOrderParamsModel();
-        $reduced = $order_params_model->getOne($order_id, 'reduced');
-        if (!$reduced && $reduced !== null) {
-            return;
-        }
-        $items_model = new shopOrderItemsModel();
-        $items = $items_model->select('*')->where("type='product' AND order_id = ".(int)$order_id)->fetchAll();
-        $sku_stock = array();
-        foreach ($items as $item) {
-            if (!isset($sku_stock[$item['sku_id']][$item['stock_id']])) {
-                $sku_stock[$item['sku_id']][$item['stock_id']] = 0;
+        $app_settings_model = new waAppSettingsModel();
+        if (!$app_settings_model->get('shop', 'disable_stock_count')) {
+            $order_params_model = new shopOrderParamsModel();
+            $reduced = $order_params_model->isReduced($order_id);
+            if (!$reduced) {
+                return;
             }
-            $sku_stock[$item['sku_id']][$item['stock_id']] += $item['quantity'];
+
+            $items_model = new shopOrderItemsModel();
+            $items = $items_model->select('*')->where("type='product' AND order_id = ".(int)$order_id)->fetchAll();
+
+            $items_stocks = $items_model->correctItemsStocks($items, $order_id, true);
+
+            $items_model->updateStockCount($items_stocks);
+            $order_params_model->unsetReduced($order_id);
+            $order_params_model->incReturnTimes($order_id);
         }
-        $items_model->updateStockCount($sku_stock);
-        $order_params_model->setOne($order_id, 'reduced', 0);
     }
 
     public function reduceProductsFromStocks($order_id)
     {
         $order_params_model = new shopOrderParamsModel();
-        $reduced = $order_params_model->getOne($order_id, 'reduced');
+        $reduced = $order_params_model->isReduced($order_id);
         if ($reduced) {
             return;
         }
+
         $items_model = new shopOrderItemsModel();
         $items = $items_model->select('*')->where("type='product' AND order_id = ".(int)$order_id)->fetchAll();
-        $sku_stock = array();
-        foreach ($items as $item) {
-            if (!isset($sku_stock[$item['sku_id']][$item['stock_id']])) {
-                $sku_stock[$item['sku_id']][$item['stock_id']] = 0;
-            }
-            $sku_stock[$item['sku_id']][$item['stock_id']] -= $item['quantity'];
-        }
-        $items_model->updateStockCount($sku_stock);
-        $order_params_model->setOne($order_id, 'reduced', 1);
+
+        $items_stocks = $items_model->correctItemsStocks($items, $order_id);
+
+        $items_model->updateStockCount($items_stocks);
+        $order_params_model->setReduced($order_id);
+        $order_params_model->incReduceTimes($order_id);
     }
 
     /**

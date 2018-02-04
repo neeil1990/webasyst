@@ -1,6 +1,6 @@
 <?php
 
-class shopDashboardSalesMethod extends waAPIMethod
+class shopDashboardSalesMethod extends shopApiMethod
 {
     protected $method = 'GET';
 
@@ -76,10 +76,10 @@ class shopDashboardSalesMethod extends waAPIMethod
         }
 
         $graph_data = array();
-        foreach($sales_by_day as $d) {
+        foreach ($sales_by_day as $d) {
             $graph_data[] = $d;
             unset($d['date']);
-            foreach($d as $k => $v) {
+            foreach ($d as $k => $v) {
                 if (!isset($totals[$k])) {
                     $totals[$k] = 0;
                 }

@@ -116,7 +116,7 @@ class shopShipping extends waAppShipping
     {
         $str = str_pad($order_id, 4, '0', STR_PAD_LEFT);
         $path = 'orders/'.substr($str, -2).'/'.substr($str, -4, 2).'/'.$order_id.'/shipping/'.$path;
-        return wa('shop')->getDataPath($path, false, 'shop');
+        return wa('shop')->getDataPath($path, false, 'shop', false);
     }
 
     public static function getList()
@@ -139,5 +139,45 @@ class shopShipping extends waAppShipping
         if (!empty($key)) {
             $this->model()->set($key, $name, $value);
         }
+    }
+
+    /**
+     *
+     * formalize order data
+     * @param array $order order ID or order data
+     * @param waShipping $shipping_plugin
+     * @return waOrder
+     * @throws waException
+     */
+    public static function getOrderData(array $order, waShipping $shipping_plugin = null)
+    {
+
+        if (!isset($order['id_str'])) {
+            $order['id_str'] = shopHelper::encodeOrderId($order['id']);
+        }
+
+        if (!isset($order['params'])) {
+            $order_params_model = new shopOrderParamsModel();
+            $order['params'] = $order_params_model->get($order['id']);
+        }
+        $options = array();
+        if ($shipping_plugin) {
+            $options['currency'] = $shipping_plugin->allowedCurrency();
+            $options['weight'] = $shipping_plugin->allowedWeightUnit();
+            $options['length'] = $shipping_plugin->allowedLinearUnit();
+        }
+        return shopHelper::getWaOrder($order, $options);
+    }
+
+    public static function getParams($shipping_id)
+    {
+        if ($shipping_params = waRequest::post('shipping_'.$shipping_id)) {
+            foreach ($shipping_params as $key => $value) {
+                if (strpos('_', $key) === 0) {
+                    unset($shipping_params[$key]);
+                }
+            }
+        }
+        return is_array($shipping_params) ? $shipping_params : null;
     }
 }

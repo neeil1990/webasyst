@@ -74,8 +74,7 @@ class shopCategoryModel extends waNestedSetModel
             $left = $right = 0;
         }
 
-
-        if (!$id && $depth == null && $route && ($cache = wa('shop')->getCache())) {
+        if (!$id && $depth === null && $route && ($cache = wa('shop')->getCache())) {
             $cache_key = waRouting::clearUrl($route);
             $data = $cache->get($cache_key, 'categories');
         }
@@ -103,7 +102,7 @@ class shopCategoryModel extends waNestedSetModel
             $sql .= " ORDER BY c.`{$this->left}`";
 
             $data = $this->query($sql, array('left' => $left, 'right' => $right, 'depth' => $depth))->fetchAll($this->id);
-            if (!$id && $depth == null && $route && ifset($cache)) {
+            if (!$id && $depth === null && $route && ifset($cache)) {
                 $cache->set($cache_key, $data, 3600, 'categories');
             }
         }
@@ -726,7 +725,7 @@ class shopCategoryModel extends waNestedSetModel
 
     public static function getDefaultMetaTitle($category)
     {
-        return htmlspecialchars(ifempty($category['name'], ''));
+        return strip_tags(ifempty($category['name']));
     }
 
     public static function getDefaultMetaKeywords($category)
@@ -736,5 +735,4 @@ class shopCategoryModel extends waNestedSetModel
             wa()->accountName()
         ));
     }
-
 }

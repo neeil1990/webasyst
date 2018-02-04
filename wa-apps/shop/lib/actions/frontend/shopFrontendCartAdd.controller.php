@@ -41,10 +41,10 @@ class shopFrontendCartAddController extends waJsonController
         // add sku
         $sku_model = new shopProductSkusModel();
         $product_model = new shopProductModel();
-        if (!isset($data['product_id'])) {
+        if (isset($data['sku_id'])) {
             $sku = $sku_model->getById($data['sku_id']);
             $product = $product_model->getById($sku['product_id']);
-        } else {
+        } else if (isset($data['product_id'])) {
             $product = $product_model->getById($data['product_id']);
             if (isset($data['sku_id'])) {
                 $sku = $sku_model->getById($data['sku_id']);
@@ -75,7 +75,7 @@ class shopFrontendCartAddController extends waJsonController
         if ($quantity < 0) {
             $quantity = 1;
         }
-        if ($product && $sku) {
+        if (!empty($product) && !empty($sku)) {
             // check quantity
             if (!wa()->getSetting('ignore_stock_count')) {
 
@@ -162,6 +162,7 @@ class shopFrontendCartAddController extends waJsonController
                 $this->response['item_id'] = $item_id;
                 $this->response['total'] = $this->currencyFormat($this->cart->total());
                 $this->response['discount'] = $this->currencyFormat($discount);
+                $this->response['discount_numeric'] = $discount;
                 $this->response['discount_coupon'] = $this->currencyFormat(ifset($order['params']['coupon_discount'], 0), true);
                 $this->response['count'] = $this->cart->count();
                 if (waRequest::get("items")) {
@@ -266,6 +267,7 @@ class shopFrontendCartAddController extends waJsonController
         $this->response['total'] = $this->currencyFormat($total);
         $this->response['count'] = $this->cart->count();
         $this->response['discount'] = $this->currencyFormat($discount);
+        $this->response['discount_numeric'] = $discount;
         $this->response['discount_coupon'] = $this->currencyFormat(ifset($order['params']['coupon_discount'], 0), true);
 
         $item_total = $this->cart->getItemTotal($data['parent_id']);
@@ -278,7 +280,7 @@ class shopFrontendCartAddController extends waJsonController
                 'items' => $this->cart->items(false)
             ));
             $this->response['add_affiliate_bonus'] = sprintf(
-                _w("This order will add +%s points to your affiliate bonus."),
+                _w("This order will add <strong>+%s bonuses</strong> to  your account, which you will be able to spend on getting additional discounts later."),
                 round($add_affiliate_bonus, 2)
             );
             $affiliate_bonus = $affiliate_discount = 0;

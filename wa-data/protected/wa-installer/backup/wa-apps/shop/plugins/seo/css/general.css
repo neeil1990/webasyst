@@ -1,0 +1,14 @@
+.link-box {
+	display: inline-block;
+	cursor: pointer;
+}
+
+.link-box__icon {
+	display: inline-block;
+	vertical-align: middle;
+}
+
+.link-box__link {
+	display: inline-block;
+	vertical-align: middle;
+}

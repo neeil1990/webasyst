@@ -7,7 +7,7 @@ class shopSettingsFeaturesAction extends waViewAction
             throw new waRightsException(_w('Access denied'));
         }
 
-        $types_per_page = $this->getConfig()->getOption('types_per_page');
+        $types_per_page = (int) $this->getConfig()->getOption('types_per_page');
         $values_per_feature = 7;
 
         $type_model = new shopTypeModel();
@@ -20,7 +20,6 @@ class shopSettingsFeaturesAction extends waViewAction
         $show_all_features = $feature_model->countAll() < $this->getConfig()->getOption('features_per_page');
 
         if ($show_all_features) {
-            $feature_model = new shopFeatureModel();
             if ($features = $feature_model->getFeatures(true, null, 'id', $values_per_feature)) {
                 $show_all_features = count($features);
                 $type_features_model->fillTypes($features, $types);

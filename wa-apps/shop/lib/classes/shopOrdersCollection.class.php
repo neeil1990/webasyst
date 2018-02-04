@@ -81,6 +81,25 @@ class shopOrdersCollection
 
     protected function prepare($add = false, $auto_title = true)
     {
+        // Filter orders allowed for the courier
+        if (!$this->prepared && !empty($this->options['courier_id'])) {
+            // orders assigned to courier...
+            $this->options['courier_id'] = (int) $this->options['courier_id'];
+            $this->addJoin(array(
+                'type'  => '',
+                'table' => 'shop_order_params',
+                'on' => "o.id = :table.order_id AND :table.name = 'courier_id'",
+                'where' => ":table.value = '".$this->options['courier_id']."'",
+            ));
+            // ...either not completed at all or completed in last 24 hours
+            $this->addJoin(array(
+                'type'  => 'LEFT',
+                'table' => 'shop_order_log',
+                'on' => "o.id = :table.order_id AND :table.action_id IN ('complete', 'delete')",
+                'where' => "(:table.id IS NULL OR datetime >= '".date('Y-m-d H:i:s', time() - 3600*24)."')",
+            ));
+        }
+
         if (!$this->prepared || $add) {
             $type = $this->hash[0];
             if ($type) {
@@ -113,9 +132,6 @@ class shopOrdersCollection
                 }
             }
 
-            if ($this->prepared) {
-                return;
-            }
             $this->prepared = true;
         }
     }
@@ -232,7 +248,7 @@ class shopOrdersCollection
     public function getSQL()
     {
         $this->prepare();
-        $sql = "FROM shop_order o";
+        $sql = "\nFROM shop_order o";
 
         if ($this->joins) {
             foreach ($this->joins as $join) {
@@ -242,14 +258,13 @@ class shopOrdersCollection
                 } else {
                     $on = "o.id = ".($alias ? $alias : $join['table']).".order_id";
                 }
-                $sql .= (!empty($join['type']) ? " ".$join['type'] : '')." JOIN ".$join['table']." ".$alias." ON ".$on;
+                $sql .= "\n\t".trim((!empty($join['type']) ? " ".$join['type'] : '')." JOIN").' '.$join['table']." AS ".$alias." ON ".$on;
             }
         }
-
         if ($this->where) {
-            $sql .= " WHERE ".implode(" AND ", $this->where);
+            $sql .= "\nWHERE ".implode("\n\tAND ", $this->where);
         }
-        $sql .= $this->getOrderBy();
+        $sql .= "\n".trim($this->getOrderBy());
         return $sql;
     }
 
@@ -484,7 +499,7 @@ class shopOrdersCollection
                 $postprocess_fields[$f] = $f;
                 if ($f == 'subtotal' || $f == 'products') {
                     $postprocess_fields['items'] = 'items';
-                } elseif ($f == 'shipping_info' || $f == 'billing_info') {
+                } elseif ($f == 'shipping_info' || $f == 'billing_info' || $f == 'courier') {
                     $postprocess_fields['params'] = 'params';
                 }
                 if (empty($fields['*'])) {
@@ -516,7 +531,7 @@ class shopOrdersCollection
                 $data[$row['order_id']]['items'][] = $row;
             }
         }
-        if (isset($postprocess_fields['products'])) {
+        if (isset($postprocess_fields['items']) && isset($postprocess_fields['products'])) {
             $product_ids = array();
             foreach ($data as $o) {
                 if (!empty($o['items'])) {
@@ -548,14 +563,47 @@ class shopOrdersCollection
                 'image',
                 'image_crop_small',
                 'frontend_url',
+                'images2x',
             );
             $products = $products_collection->getProducts(implode(',', $product_fields));
             foreach ($data as &$o) {
-                foreach ($o['items'] as &$it) {
-                    $it['product'] = ifset($products[$it['product_id']]);
+                if (!empty($o['items'])) {
+                    foreach ($o['items'] as &$it) {
+                        $it['product'] = ifset($products[$it['product_id']]);
+                    }
                 }
             }
             unset($o, $it);
+        }
+        if (isset($postprocess_fields['items']) && isset($postprocess_fields['skus'])) {
+            unset($default_values['skus']);
+
+            // Collect sku ids
+            $sku_ids = array();
+            foreach ($data as $o) {
+                if (!empty($o['items'])) {
+                    foreach ($o['items'] as $it) {
+                        if (!empty($it['sku_id'])) {
+                            $sku_ids[$it['sku_id']] = $it['sku_id'];
+                        }
+                    }
+                }
+            }
+
+            // Fetch sku data
+            if ($sku_ids) {
+                $product_skus_model = new shopProductSkusModel();
+                $skus = $product_skus_model->getById($sku_ids);
+
+                foreach ($data as &$o) {
+                    if (!empty($o['items'])) {
+                        foreach ($o['items'] as &$it) {
+                            $it['sku'] = ifset($skus[$it['sku_id']]);
+                        }
+                    }
+                }
+                unset($o, $it);
+            }
         }
 
         if (isset($postprocess_fields['params'])) {
@@ -581,11 +629,22 @@ class shopOrdersCollection
                 'photo_url_2x' => true,
             ));
             $contacts = $contacts_collection->getContacts($contact_fields, 0, 100500);
+            $use_gravatar = wa('shop')->getConfig()->getGeneralSettings('use_gravatar');
+            $gravatar_default = wa('shop')->getConfig()->getGeneralSettings('gravatar_default');
+
             foreach ($contacts as &$c) {
                 $c['name'] = waContactNameField::formatName($c);
-                unset($c['firstname'], $c['middlename'], $c['lastname']);
+                if (!isset($postprocess_fields['contact_full'])) {
+                    unset($c['firstname'], $c['middlename'], $c['lastname']);
+                }
                 if ($escape) {
                     $c['name'] = htmlspecialchars($c['name'], ENT_COMPAT, 'utf-8');
+                }
+
+                $email = ifset($c, 'email', 0, null);
+                if ($use_gravatar && $email) {
+                    $c['photo_url_40'] = shopHelper::getGravatar($email, 40, $gravatar_default, true);
+                    $c['photo_url_96'] = shopHelper::getGravatar($email, 96, $gravatar_default, true);
                 }
             }
             unset($c);
@@ -627,15 +686,53 @@ class shopOrdersCollection
             unset($o);
         }
 
-        if (isset($postprocess_fields['subtotal'])) {
+        if (isset($postprocess_fields['items']) && isset($postprocess_fields['subtotal'])) {
             foreach ($data as &$o) {
                 $subtotal = 0;
-                foreach ($o['items'] as $i) {
-                    $subtotal += $i['price'] * $i['quantity'];
+                if (!empty($o['items'])) {
+                    foreach ($o['items'] as $i) {
+                        $subtotal += $i['price'] * $i['quantity'];
+                    }
                 }
                 $o['subtotal'] = $subtotal;
             }
             unset($o);
+        }
+
+        if (isset($postprocess_fields['courier'])) {
+            // Figure out courier_ids to load
+            $courier_ids = array();
+            foreach ($data as &$o) {
+                $o['courier'] = null;
+                if (!empty($o['params']['courier_id'])) {
+                    $courier_ids[$o['params']['courier_id']] = $o['params']['courier_id'];
+                }
+            }
+            unset($o);
+
+            if ($courier_ids) {
+                // Fetch couriers info
+                $courier_model = new shopApiCourierModel();
+                $couriers = $courier_model->getById($courier_ids);
+
+                // Hide sensitive api-related fields
+                foreach($couriers as &$c) {
+                    foreach($c as $k => $v) {
+                        if(substr($k, 0, 4) == 'api_') {
+                            unset($c[$k]);
+                        }
+                    }
+                }
+                unset($c);
+
+                // Add courier info to orders
+                foreach ($data as &$o) {
+                    if (!empty($o['params']['courier_id']) && !empty($couriers[$o['params']['courier_id']])) {
+                        $o['courier'] = $couriers[$o['params']['courier_id']];
+                    }
+                }
+                unset($o);
+            }
         }
 
         if (class_exists('waContactAddressField') && class_exists('waContactAddressDataFormatter')) {
@@ -643,16 +740,25 @@ class shopOrdersCollection
                 $formatter = new waContactAddressDataFormatter();
                 foreach ($data as &$o) {
                     $o['shipping_info'] = array();
-                    if (isset($o['params']['shipping_name'])) {
-                        $o['shipping_info']['name'] = $o['params']['shipping_name'];
-                    }
-                    if (isset($o['params']['shipping_est_delivery'])) {
-                        $o['shipping_info']['est_delivery'] = $o['params']['shipping_est_delivery'];
-                    }
+                    if(!empty($o['params'])) {
+                        if (isset($o['params']['shipping_name'])) {
+                            $o['shipping_info']['name'] = $o['params']['shipping_name'];
+                        }
+                        if (isset($o['params']['shipping_est_delivery'])) {
+                            $o['shipping_info']['est_delivery'] = $o['params']['shipping_est_delivery'];
+                        }
+                        $shipping_address = shopHelper::getOrderAddress($o['params'], 'shipping');
+                        if ($shipping_address) {
+                            $o['shipping_info']['address'] = $formatter->format(array('data' => $shipping_address));
+                        }
 
-                    $shipping_address = shopHelper::getOrderAddress($o['params'], 'shipping');
-                    if ($shipping_address) {
-                        $o['shipping_info']['address'] = $formatter->format(array('data' => $shipping_address));
+                        list($date, $time_from, $time_to) = shopHelper::getOrderShippingInterval($o['params']);
+                        if ($date) {
+                            $o['shipping_info']['interval_date'] = $date;
+                            $o['shipping_info']['interval_time_from'] = $time_from;
+                            $o['shipping_info']['interval_time_to'] = $time_to;
+                            $o['shipping_info']['interval_formatted'] = wa_date('date', $date).' '.$time_from.'-'.$time_to;
+                        }
                     }
 
                     if ($o['shipping'] || $o['shipping_info']) {
@@ -665,9 +771,11 @@ class shopOrdersCollection
                 $formatter = new waContactAddressDataFormatter();
                 foreach ($data as &$o) {
                     $o['billing_info'] = array();
-                    $billing_address = shopHelper::getOrderAddress($o['params'], 'billing');
-                    if ($billing_address) {
-                        $o['billing_info']['address'] = $formatter->format(array('data' => $billing_address));
+                    if (!empty($o['params'])) {
+                        $billing_address = shopHelper::getOrderAddress($o['params'], 'billing');
+                        if ($billing_address) {
+                            $o['billing_info']['address'] = $formatter->format(array('data' => $billing_address));
+                        }
                     }
                 }
             }
@@ -699,10 +807,9 @@ class shopOrdersCollection
         if (!$order || !$order_id) {
             return false;
         }
-        $create_datetime = $model->escape($order['create_datetime']);
 
-        // for calling prepare
-        $this->getSQL();
+        // Prepare beforehand to make sure calling getSQL() won't modify $this->where.
+        $this->prepare();
 
         // first, check existing in collection
         $this->where[] = 'o.id = '.$order_id;
@@ -712,14 +819,25 @@ class shopOrdersCollection
         }
         array_pop($this->where);
 
-        // than calculate offset
-        $this->where[] = "(o.create_datetime > '{$create_datetime}' OR (o.create_datetime = '{$create_datetime}' AND o.id < '{$order_id}'))";
-        $sql = "SELECT COUNT(o.id) offset ".$this->getSQL();
-        $offset = $model->query($sql)->fetchField();
-        array_pop($this->where);
+        // than calculate offset. Not in effective way, but in easy and accurate way
+        $order_offset = false;
+        $total_count = $this->count();
+        $limit = 500;
+        $number_of_tries = floor($total_count / $limit) + 1;
+        for ($try = 0; $try < $number_of_tries; $try += 1) {
+            $offset = $try * $limit;
+            $sql = "SELECT o.id ".$this->getSQL() . " LIMIT {$offset}, {$limit}";
+            $list = $model->query($sql)->fetchAll(null, true);
+            $order_offset = array_search($order['id'], $list);
+            if ($order_offset !== false) {
+                $order_offset += $offset;
+                break;
+            }
+        }
 
-        return $offset;
 
+
+        return (int) $order_offset;
     }
 
     protected function searchPrepare($query, $auto_title = true)
@@ -955,11 +1073,25 @@ class shopOrdersCollection
                 list($field, $param) = explode(':', $field, 2);
             }
             switch ($field) {
+                case 'shipping_datetime':
+                    $this->order_by = "(o.shipping_datetime IS NOT NULL) DESC, o.shipping_datetime {$order}";
+                    break;
+                case 'updated':
+                    $this->order_by = "IFNULL(o.update_datetime, o.create_datetime) {$order}";
+                    break;
                 case 'amount':
                     if ($param !== null) {
                         $this->order_by = sprintf("ABS(o.total * o.rate - %s) %s", str_replace(',', '.', (float)$param), $order);
                     } else {
                         $this->order_by = "o.total * o.rate {$order}";
+                    }
+                    break;
+                case 'state_id':
+                    $workflow = new shopWorkflow();
+                    $state_ids = array_keys($workflow->getAllStates());
+                    if ($state_ids) {
+                        $state_ids = "'".join("','", self::getModel()->escape($state_ids))."'";
+                        $this->order_by = "FIELD(o.state_id, {$state_ids}) {$order}";
                     }
                     break;
                 default:

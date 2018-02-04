@@ -7,13 +7,13 @@
     {if $product.summary}
         <p>{$product.summary|truncate:512}</p>
     {/if}
-    
+
     {if $product.sku_type}
 
         <!-- SELECTABLE FEATURES selling mode -->
         {$default_sku_features = $product.sku_features}
         {$product_available = $product.status}
-        
+
         {if $theme_settings.selectable_features_control == 'inline'}
             <div class="options">
                 {foreach $features_selectable as $f}
@@ -29,7 +29,7 @@
                     </div>
 
                 {/foreach}
-            </div>        
+            </div>
         {else}
             <div class="options">
                 {foreach $features_selectable as $f}
@@ -43,14 +43,14 @@
                 {/foreach}
             </div>
         {/if}
-        
+
         <!-- list all SKUs for Schema.org markup -->
         {foreach $product.skus as $sku}
             <div itemprop="offers" itemscope itemtype="http://schema.org/Offer">
                 {$sku_available =  $product.status && $sku.available && ($wa->shop->settings('ignore_stock_count') || $sku.count === null || $sku.count > 0)}
                 {if $sku.name}<meta itemprop="name" content="{$sku.name|escape}">{/if}
-                <meta itemprop="price" content="{$sku.price}">
-                <meta itemprop="priceCurrency" content="{$product.currency}">
+                <meta itemprop="price" content="{shop_currency($sku.price, $product.currency)}">
+                <meta itemprop="priceCurrency" content="{$wa->shop->currency()}">
                 {if (!($sku.count === null) && $sku.count <= 0)}
                     <link itemprop="availability" href="http://schema.org/OutOfStock" />
                 {else}
@@ -58,15 +58,14 @@
                 {/if}
             </div>
         {/foreach}
-        
+
     {else}
 
         <!-- FLAT SKU LIST selling mode -->
         {$product_available = false}
         {if count($product.skus) > 1}
-    
-            {* SKU radio buttons *}
-        
+
+            {* When there is more than one SKU, display selector *}
             <ul class="skus">
                 {foreach $product.skus as $sku}
                 {$sku_available =  $product.status && $sku.available && ($wa->shop->settings('ignore_stock_count') || $sku.count === null || $sku.count > 0)}
@@ -74,8 +73,8 @@
                     <label{if !$sku.available} class="disabled"{/if}>
                     <input name="sku_id" type="radio" value="{$sku.id}"{if !$sku.available} disabled="true"{/if}{if !$sku_available}data-disabled="1"{/if}{if $sku.id == $product.sku_id} checked="checked"{/if} data-compare-price="{shop_currency($sku.compare_price, $product.currency, null, 0)}" data-price="{shop_currency($sku.price, $product.currency, null, 0)}"{if $sku.image_id} data-image-id="{$sku.image_id}"{/if}> <span itemprop="name">{$sku.name|escape}</span>
                     {if $sku.sku}<span class="hint">{$sku.sku|escape}</span>{/if}
-                    <meta itemprop="price" content="{$sku.price}">
-                    <meta itemprop="priceCurrency" content="{$product.currency}">
+                    <meta itemprop="price" content="{shop_currency($sku.price, $product.currency)}">
+                    <meta itemprop="priceCurrency" content="{$wa->shop->currency()}">
                     <span class="price tiny nowrap">{shop_currency_html($sku.price, $product.currency)}</span>
                     {if (!($sku.count === null) && $sku.count <= 0)}
                         <link itemprop="availability" href="http://schema.org/OutOfStock" />
@@ -89,14 +88,14 @@
             </ul>
 
         {else}
-    
-            {* in case there is only one SKU, don't display the selector *}
+
+            {* When there is only one SKU, don't display the selector *}
             <div itemprop="offers" itemscope itemtype="http://schema.org/Offer">
                 {$sku = $product.skus[$product.sku_id]}
                 {if $sku.sku}<span class="hint">{$sku.sku|escape}</span>{/if}
                 {if $sku.name}<meta itemprop="name" content="{$sku.name|escape}">{/if}
-                <meta itemprop="price" content="{$sku.price}">
-                <meta itemprop="priceCurrency" content="{$product.currency}">
+                <meta itemprop="price" content="{shop_currency($sku.price, $product.currency)}">
+                <meta itemprop="priceCurrency" content="{$wa->shop->currency()}">
                 {if !$sku.available}
                 <link itemprop="availability" href="http://schema.org/Discontinued" />
                 <p><em class="bold error">[`This product is not available for purchase`]</em></p>
@@ -109,7 +108,7 @@
                 <input name="sku_id" type="hidden" value="{$product.sku_id}">
                 {$product_available = $product.status && $sku.available && ($wa->shop->settings('ignore_stock_count') || $sku.count === null || $sku.count > 0)}
             </div>
-    
+
         {/if}
 
     {/if}
@@ -145,9 +144,9 @@
                 </div>
             {/foreach}
             {if $product.sku_type}
-            <div class="sku-no-stock">
-                <strong class="stock-none">[`Product with the selected option combination is not available for purchase`]</strong>
-            </div>
+                <div class="sku-no-stock">
+                    <strong class="stock-none">[`Product with the selected option combination is not available for purchase`]</strong>
+                </div>
             {/if}
         </div>
     {/if}

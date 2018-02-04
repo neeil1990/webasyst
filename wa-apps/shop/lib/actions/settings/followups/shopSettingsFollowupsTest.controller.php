@@ -24,21 +24,31 @@ class shopSettingsFollowupsTestController extends waJsonController
             $this->errors = _w('Order not found');
             return;
         }
-        $ords = array(
+        $orders = array(
             $o['id'] => $o
         );
-        shopHelper::workupOrders($ords, false);
-        $o = $ords[$o['id']];
-        unset($ords);
+        shopHelper::workupOrders($orders, false);
+        $o = $orders[$o['id']];
+        unset($orders);
 
         $opm = new shopOrderParamsModel();
         $o['params'] = $opm->get($order_id);
 
         try {
-            $contact = $o['contact_id'] ? new shopCustomer($o['contact_id']) : wa()->getUser();
+            $contact = new shopCustomer($o['contact_id']);
             $contact->getName();
         } catch (Exception $e) {
+            // Contact not found
+        }
+        if (empty($contact)) {
             $contact = new shopCustomer(wa()->getUser()->getId());
+        }
+
+        $contact_data = $contact->getCustomerData();
+        foreach (ifempty($contact_data, array()) as $field_id => $value) {
+            if ($field_id !== 'contact_id') {
+                $contact[$field_id] = $value;
+            }
         }
 
         if ($f['transport'] === 'email') {

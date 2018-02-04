@@ -1,7 +1,8 @@
 <?php
 
-class shopStockGetListMethod extends waAPIMethod
+class shopStockGetListMethod extends shopApiMethod
 {
+    protected $courier_allowed = true;
     public function execute()
     {
         $stock_model = new shopStockModel();

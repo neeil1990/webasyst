@@ -79,6 +79,15 @@ class shopFrontendMyOrderAction extends shopFrontendAction
             $contact = new waContact($order['contact_id']);
         }
 
+        $contact_data = new shopCustomer(wa()->getUser()->getId());
+        $contact_data = $contact_data->getCustomerData();
+
+        foreach (ifempty($contact_data, array()) as $field_id => $value) {
+            if ($field_id !== 'contact_id') {
+                $contact[$field_id] = $value;
+            }
+        }
+
         $payment = '';
         if (!empty($order['params']['payment_id']) && !$order['paid_date']) {
             try {
@@ -101,6 +110,21 @@ class shopFrontendMyOrderAction extends shopFrontendAction
         }
         $this->view->assign('tracking', $tracking);
 
+        $courier = array();
+        if (!empty($order['params']['courier_id'])) {
+            $courier_model = new shopApiCourierModel();
+            $courier = $courier_model->getById($order['params']['courier_id']);
+            foreach ($courier as $field => $value) {
+                if (strpos($field, 'api_') === 0) {
+                    unset($courier[$field]);
+                }
+            }
+            if (!empty($courier['contact_id'])) {
+                $courier['contact'] = new waContact($courier['contact_id']);
+            }
+        }
+        $this->view->assign('courier', $courier);
+
         /**
          * @event frontend_my_order
          * @return array[string]string $return[%plugin_id%] html output
@@ -109,6 +133,7 @@ class shopFrontendMyOrderAction extends shopFrontendAction
 
         $this->view->assign('order', $order);
         $this->view->assign('contact', $contact);
+        $this->view->assign('customer', $contact);
         $this->view->assign('shipping_address', $shipping_address);
         $this->view->assign('billing_address', $billing_address);
         $this->view->assign('subtotal', $subtotal);

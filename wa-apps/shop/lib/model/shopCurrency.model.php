@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Class shopCurrencyModel
+ * array(
+ *  'code'=>'char(3)',
+ *  'rate'=>'decimal(18,10)',
+ *  'rounding'=>'decimal(8,2),
+ *  'round_up_only'=>'int(11)',
+ *  'sort'=>int(11),
+ * )
+ */
 class shopCurrencyModel extends waModel
 {
     protected $table = 'shop_currency';
@@ -56,7 +66,7 @@ class shopCurrencyModel extends waModel
                     if (isset($currencies[$code])) {
                         $c['rate'] = (double)$c['rate'];
                         if (!((double)$c['rounding'])) {
-                            $c['rounding'] = null;
+                            $c['rounding'] = self::getRounding($currencies[$code]);
                         }
                         $data[$code] = $currencies[$code] + $c;
                         $data[$code]['is_primary'] = $primary == $code;
@@ -97,6 +107,9 @@ class shopCurrencyModel extends waModel
     {
         $price = $this->castValue('double', $price);
         if ($from == $to) {
+            return $price;
+        }
+        if (!$price) {
             return $price;
         }
         $currencies = $this->getCurrencies(array($from, $to));
@@ -144,7 +157,6 @@ class shopCurrencyModel extends waModel
             }
 
             $this->convertPrices($code, $rate, $convert_to, $rate_to);
-            $convert_to = $this->escape($convert_to);
             $this->exec("UPDATE `shop_product` SET currency = s:0 WHERE currency = s:1", $convert_to, $code);
             $this->exec("UPDATE `shop_service` SET currency = s:0 WHERE currency = s:1", $convert_to, $code);
 
@@ -160,9 +172,9 @@ class shopCurrencyModel extends waModel
          */
         $params = array(
             'code'       => $code,
-            'convert_to' => $code,
+            'convert_to' => $convert_to,
         );
-        wa()->event('currency_delete', $params);
+        wa('shop')->event('currency_delete', $params);
         $this->deleteCache();
         return $this->deleteById($code);
     }
@@ -221,6 +233,7 @@ class shopCurrencyModel extends waModel
             $this->exec("UPDATE `shop_customer`  SET total_spent = total_spent/$rate");
             $this->exec("UPDATE `shop_product` SET total_sales = total_sales/$rate");
             $this->exec("UPDATE `shop_order` SET rate = rate/$rate");
+            $this->exec("UPDATE `shop_order_params` SET value = value/$rate WHERE name='shipping_currency_rate'");
             $this->exec("UPDATE `shop_expense` SET amount = amount/$rate");
             $this->exec("DELETE FROM `shop_sales`");
             $this->updateById($old_code, array('sort' => $currencies[$new_code]));
@@ -237,6 +250,21 @@ class shopCurrencyModel extends waModel
             wa('shop')->getConfig()->setCurrency($new_code);
             $this->primary_currency = $new_code;
             $this->deleteCache();
+
+            /**
+             * @event currency_primary
+             * @param string [string]mixed $params
+             * @param string [string]string $params['code'] New primary currency code
+             * @param string [string]string $params['old_code'] Currency code used to be primary
+             * @param string [string]string $params['old_rate'] New primary currency rate relative to the old one
+             * @return void
+             */
+            $params = array(
+                'old_code'   => $old_code,
+                'code'       => $new_code,
+                'old_rate'   => $rate,
+            );
+            wa('shop')->event('currency_primary', $params);
         }
         return true;
     }
@@ -304,12 +332,15 @@ class shopCurrencyModel extends waModel
             return false;
         }
         $sort = $this->query("SELECT MAX(sort) sort FROM `{$this->table}`")->fetchField('sort') + 1;
-        $result = $this->insert(array(
-            'code' => $code,
-            'sort' => $sort
-        ));
+        $rounding = self::getRounding($currencies[$code]);
+        $data = array(
+            'code'     => $code,
+            'sort'     => $sort,
+            'rounding' => $rounding,
+        );
+        $result = $this->insert($data);
         $this->deleteCache();
-        return $result;
+        return $result ? $data : $result;
     }
 
     public function deleteCache()
@@ -349,6 +380,22 @@ class shopCurrencyModel extends waModel
             $this->recalcProductPrimaryPrices($code);
             $this->recalcServicePrimaryPrices($code);
             $this->deleteCache();
+
+            /**
+             * @event currency_change
+             * @param string [string]mixed $params
+             * @param string [string]string $params['code'] Currency code changed
+             * @param string [string]string $params['old_rate'] Old currency rate relative to primary currency
+             * @param string [string]string $params['new_rate'] New currency rate relative to primary currency
+             * @return void
+             */
+            $params = array(
+                'code'       => $code,
+                'old_rate'   => $old_rate,
+                'new_rate'   => $rate,
+            );
+            wa('shop')->event('currency_change', $params);
+
             return $result;
         }
         return true;
@@ -454,5 +501,14 @@ class shopCurrencyModel extends waModel
         }
         $this->deleteCache();
         return true;
+    }
+
+    public static function getRounding($currency)
+    {
+        $rounding = null;
+        if (isset($currency['precision']) && wa_is_int($currency['precision']) && $currency['precision'] > 0 && $currency['precision'] <= 4) {
+            return pow(10, -$currency['precision']);
+        }
+        return $rounding;
     }
 }

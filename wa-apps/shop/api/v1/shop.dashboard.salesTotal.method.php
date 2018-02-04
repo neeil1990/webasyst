@@ -1,6 +1,6 @@
 <?php
 
-class shopDashboardSalesTotalMethod extends waAPIMethod
+class shopDashboardSalesTotalMethod extends shopApiMethod
 {
     protected $method = 'GET';
 
@@ -73,4 +73,3 @@ class shopDashboardSalesTotalMethod extends waAPIMethod
         return $totals;
     }
 }
-

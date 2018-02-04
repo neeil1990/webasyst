@@ -1,6 +1,6 @@
 <?php
 
-class shopCategoryGetTreeMethod extends waAPIMethod
+class shopCategoryGetTreeMethod extends shopApiMethod
 {
     protected $method = 'GET';
 
@@ -19,7 +19,7 @@ class shopCategoryGetTreeMethod extends waAPIMethod
             $l = count($stack);
 
             // Check if we're dealing with different levels
-            while($l > 0 && $stack[$l - 1]['depth'] >= $c['depth']) {
+            while ($l > 0 && $stack[$l - 1]['depth'] >= $c['depth']) {
                 array_pop($stack);
                 $l--;
             }

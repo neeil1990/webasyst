@@ -1,6 +1,6 @@
 <?php
 
-class shopProductImagesGetInfoMethod extends waAPIMethod
+class shopProductImagesGetInfoMethod extends shopApiMethod
 {
     public function execute()
     {
@@ -16,5 +16,6 @@ class shopProductImagesGetInfoMethod extends waAPIMethod
         $this->response = $image;
         $size = waRequest::get('size', wa('shop')->getConfig()->getImageSize('thumb'));
         $this->response['url_thumb'] = shopImage::getUrl($image, $size, true);
+        $this->response['url_big'] = shopImage::getUrl($image, null, true);
     }
 }

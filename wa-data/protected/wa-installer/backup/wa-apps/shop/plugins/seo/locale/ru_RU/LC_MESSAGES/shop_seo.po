@@ -1,0 +1,265 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: ShopSeo\n"
+"POT-Creation-Date: 2015-08-10 11:27+0500\n"
+"PO-Revision-Date: 2016-06-03 18:06+0500\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 1.8.4\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Language: ru_RU\n"
+
+msgid "SEO"
+msgstr "SEO-оптимизация"
+
+msgid "General"
+msgstr "Все витрины (Общий шаблон для всех витрин)"
+
+msgid "Settings"
+msgstr "Настройки"
+
+msgid "Storefront name"
+msgstr "Название витрины"
+
+msgid "storefront name"
+msgstr "название витрины"
+
+msgid "page number"
+msgstr "номер страницы"
+
+msgid "product price"
+msgstr "цена товара"
+
+msgid "product sku"
+msgstr "артикул товара"
+
+msgid "Ignore title"
+msgstr "Игнорировать персональные заголовки"
+
+msgid "Ignore meta title keywords description"
+msgstr "Персональные значения Title, META Keywords, META Description будут перекрыты настройками указанными в настройках плагина"
+
+msgid "Main page"
+msgstr "Главная страница"
+
+msgid "Category page"
+msgstr "Страницы категорий"
+
+msgid "Subcategory page"
+msgstr "Страницы подкатегорий"
+
+msgid "Product page"
+msgstr "Страницы товаров"
+
+msgid "Static page"
+msgstr "Статические страницы"
+
+msgid "Tag page"
+msgstr "Страницы тегов"
+
+msgid "Brand page"
+msgstr "Страницы брендов"
+
+msgid "Title"
+msgstr "Заголовок"
+
+msgid "Description"
+msgstr "Описание"
+
+msgid "Variables"
+msgstr "Переменные"
+
+msgid "Category description"
+msgstr "Описание категории"
+
+msgid "store name"
+msgstr "название магазина"
+
+msgid "store phone"
+msgstr "телефон магазина"
+
+msgid "category name"
+msgstr "название категории"
+
+msgid "category SEO name"
+msgstr "SEO название категории"
+
+msgid "parent category name"
+msgstr "название родительской категории"
+
+msgid "products count"
+msgstr "количество товаров"
+
+msgid "product name"
+msgstr "название товара"
+
+msgid "product SEO name"
+msgstr "SEO название товара"
+
+msgid "root category name"
+msgstr "название корневой категории"
+
+msgid "root category SEO name"
+msgstr "SEO название корневой категории"
+
+msgid "page name"
+msgstr "название страницы"
+
+msgid "tag name"
+msgstr "название тега"
+
+msgid "brand name"
+msgstr "название бренда"
+
+msgid "SEO name"
+msgstr "SEO Название"
+
+msgid "Storefronts"
+msgstr "Витрины"
+
+msgid "SEO subcategory page"
+msgstr "SEO оптимизация страниц подкатегорий"
+
+msgid "SEO product page"
+msgstr "SEO оптимизация страниц товаров"
+
+msgid "Fast and flexible optimization of your shop"
+msgstr "Быстрая и гибкая оптимизация вашего магазина"
+
+msgid "Enable subcategories rules"
+msgstr "Включить возможность формирования правил для подкатегорий"
+
+msgid "Enable products rules"
+msgstr "Включить возможность указывать правила для товаров определенной категории"
+
+msgid "Enable seo name for h1 categories"
+msgstr "Использовать альтернативные названия для категорий в качестве заголовка h1 если они заполнены"
+
+msgid "Enable seo name for h1 products"
+msgstr "Использовать альтернативные названия для товаров в качестве заголовка h1 если они заполнены"
+
+msgid "Plugin status"
+msgstr "Статус плагина"
+
+msgid "On"
+msgstr "Включён"
+
+msgid "Off"
+msgstr "Выключен"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "Saved"
+msgstr "Сохранено"
+
+msgid "Options plugin"
+msgstr "Опции плагина"
+
+msgid "General settings"
+msgstr "Общие настройки формирования мета-тегов и описаний для витрин"
+
+msgid "lower case"
+msgstr "преобразует в нижний регистр"
+
+msgid "currency"
+msgstr "преобразует число в денежный формат"
+
+msgid "if page not first"
+msgstr "преобразует в пустую строку если страница первая"
+
+msgid "if page first"
+msgstr "преобразует в пустую строку если страница не первая"
+
+msgid "min price"
+msgstr "минимальная цена в категории"
+
+msgid "Modifiers"
+msgstr "Модификаторы"
+
+msgid "Help"
+msgstr "Помощь"
+
+msgid "Was change address"
+msgstr "Был изменён адрес витрины"
+
+msgid "What doing with settings?"
+msgstr "Что делать с настройками витрины?"
+
+msgid "Delete"
+msgstr "Удалить"
+
+msgid "Transfer to other storefront"
+msgstr "Перенести на другую витрину"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "delete"
+msgstr "удалить"
+
+msgid "Field"
+msgstr "Поле"
+
+msgid "New field"
+msgstr "Новое поле"
+
+msgid "Add field"
+msgstr "Добавить поле"
+
+msgid "Additional fields"
+msgstr "Дополнительные поля для витрин"
+
+msgid "Select storefront"
+msgstr "Выберите витрину"
+
+msgid "categories path"
+msgstr "путь до категории"
+
+msgid "parent categories"
+msgstr "путь до категории"
+
+msgid "if product page is open"
+msgstr "преобразует в пустую строку если не открыта страница товара"
+
+msgid "if brand category is open"
+msgstr "преобразует в пустую строку если не открыта категория бренда"
+
+msgid "Enable category additional description"
+msgstr "Включить поле дополнительного описания категории"
+
+msgid "Category additional description"
+msgstr "Дополнительное описание категории"
+
+msgid "Additional description"
+msgstr "Дополнительное описание"
+
+msgid "Product description"
+msgstr "Описание товара"
+
+msgid "Info"
+msgstr "Информация"
+
+msgid "Support"
+msgstr "Поддержка"
+
+msgid "Review"
+msgstr "Оставить отзыв"
+
+msgid "Developer"
+msgstr "Разработчик"
+
+msgid "Loading"
+msgstr "Загрузка"
+
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "For output insert code"
+msgstr "Для вывода вставьте код"
+
+msgid "in"
+msgstr "в"

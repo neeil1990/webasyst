@@ -48,6 +48,7 @@
             $.product_sidebar.init();
             $.categories_tree.init();
             this.initCollapsible();
+            this.tagsHandler();
         },
 
         data: {
@@ -335,10 +336,21 @@
         },
 
         stocksAction: function (order) {
-            if (!$('#s-stocks-container').length) {
-                this.load('?module=stocks' + (order ? '&order=' + order : '') + '&tab=balance');
+            var sort = '';
+            if (!order || order === 'desc' || order === 'asc') {
+                sort = 'count';
             } else {
-                $('#s-stocks-container').trigger('load', ['balance', (order ? 'order=' + order : '')]);
+                order = '' + (order || '');
+                var m = order.match(/stock_count_(\d*)_*(desc|asc)*/);
+                if (m) {
+                    sort = 'stock_count_' + m[1];
+                    order = m[2] === 'desc' ? 'desc' : 'asc';
+                }
+            }
+            if (!$('#s-stocks-container').length) {
+                this.load('?module=stocks' + (order ? '&order=' + order : '') + (sort ? '&sort=' + sort : '') + '&tab=balance');
+            } else {
+                $('#s-stocks-container').trigger('load', [ 'balance', (order ? 'order=' + order : '')  + (sort ? '&sort=' + sort : '') ]);
             }
         },
 
@@ -366,6 +378,18 @@
                     $.products.afterServicesAction();
                 }
             });
+        },
+
+        tagsHandler:function () {
+                $('#s-products-all-tags').autocomplete({
+                    source: '?module=product&action=tagsAutocomplete&type=search',
+                    minLength: 1,
+                    delay: 300,
+                    select: function(event, ui) {
+                        $.wa.setHash('#/products/tag=' + ui.item.value);
+                        return false;
+                    }
+                });
         },
 
         initCollapsible: function () {

@@ -1,0 +1,14 @@
+cec1414bfa067074a712abf5f4ddfe2e *img/invoice16.png
+a285da79a1cf95556e4eb1fd40059097 *lib/.htaccess
+8029f7b0d38c8207488dda2eeeecf933 *lib/actions/printform/shopConsignmentruPluginPrintformDisplay.action.php
+38f80bb60483f3610b79d6160734f05e *lib/config/build.php
+a4237c2299cbb52bd80ba9fefb347465 *lib/config/plugin.php
+28783d5ce1140f8a5da83b12b6500808 *lib/config/requirements.php
+5bec6044fb8efad65390300eafbf2981 *lib/config/settings.php
+2cf65873d2f5dede06a37dd056a2ea3b *lib/shopConsignmentru.plugin.php
+ccb9c1d96f29248b9fc3591c39fc3422 *lib/updates/1431521862.php
+a285da79a1cf95556e4eb1fd40059097 *templates/.htaccess
+8e0d5c96c766649e44126f81a24757f3 *templates/actions/printform/PrintformDisplay.html
+70a59f91cd44fa4d486a3d368b242632 *templates/actions/printform/css/printform.css
+07106953943950db5df6dec7c7582f0b *templates/actions/printform/js/printform.js
+a175a1b7cee16119bf9c4dd16a08134b *templates/actions/printform/template.html

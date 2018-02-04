@@ -10,7 +10,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Poedit-SourceCharset: UTF-8\n"
 "X-Poedit-Basepath: .\n"
-"X-Generator: Poedit 1.8.7\n"
+"X-Generator: Poedit 1.8.7.1\n"
 "Plural-Forms: nplurals=2; plural=n == 1 ? 0 : 1;\n"
 "Language: en_US\n"
 "X-Poedit-SearchPath-0: .\n"
@@ -3524,7 +3524,7 @@ msgid "days after the order was paid"
 msgstr ""
 
 #: /wa-apps/shop/templates/actions/settings/SettingsFollowups.html:91
-msgid "Send follow-up after recurrent orders too"
+msgid "Send for customer‘s first paid order only"
 msgstr ""
 
 #: /wa-apps/shop/templates/actions/settings/SettingsFollowups.html:99
@@ -3733,7 +3733,7 @@ msgstr ""
 
 #: /wa-apps/shop/templates/actions/settings/SettingsFollowupsHelp.html:209
 #: /wa-apps/shop/templates/actions/settings/SettingsNotificationsHelp.html:239
-msgid "An array containing information about the customer according to the Contacts app setup and your storefront’s checkout contact info form"
+msgid "Customer-related data array"
 msgstr ""
 
 #: /wa-apps/shop/templates/actions/settings/SettingsFollowupsHelp.html:217
@@ -7226,7 +7226,7 @@ msgstr ""
 
 #: /wa-apps/shop/lib/config/data/dimension.php:112
 msgid "KW"
-msgstr ""
+msgstr "kW"
 
 #: /wa-apps/shop/lib/config/data/dimension.php:116
 msgid "MW"
@@ -7524,7 +7524,7 @@ msgid "Core content loaded according to the requested resource: product, categor
 msgstr ""
 
 #: /wa-apps/shop/lib/config/site.php:136 /wa-apps/shop/lib/config/site.php:188
-msgid "Product id. Other elements of <em>$product</em> available in this template are listed below"
+msgid "Product ID. Other elements of <em>$product</em> object available in this template are listed below."
 msgstr ""
 
 #: /wa-apps/shop/lib/config/site.php:138 /wa-apps/shop/lib/config/site.php:190
@@ -9640,7 +9640,7 @@ msgid "Transaction date"
 msgstr ""
 
 #: /wa-apps/shop/templates/actions/settings/SettingsAnalytics.html:10
-msgid "Order was paid or marked as completed"
+msgid "Order was marked as paid or completed"
 msgstr ""
 
 #: /wa-apps/shop/templates/actions/settings/SettingsAnalytics.html:14
@@ -9648,7 +9648,7 @@ msgid "Order was created"
 msgstr ""
 
 #: /wa-apps/shop/templates/actions/settings/SettingsAnalytics.html:17
-msgid "Orders in sales reports will be grouped by the date selected."
+msgid "Choose an order action to associate its date with the order amount in <a href=\"?action=reports\">sales reports</a>."
 msgstr ""
 
 #: /wa-apps/shop/lib/actions/csv/shopCsvProductrun.controller.php:651
@@ -9811,6 +9811,11 @@ msgstr ""
 #: /wa-apps/shop/templates/actions/product/Product.html:177
 #: /wa-apps/shop/lib/actions/product/shopProductSave.controller.php:169
 msgid "Based on your average monthly sales volume for %s during last three months (%d units per month), you will run out of this product in <strong>%d days</strong> (on %s)."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/product/Product.html:196
+#: /wa-apps/shop/lib/actions/product/shopProductSave.controller.php:169
+msgid "Based on your average monthly sales volume for %s during last three months (%d units per month), you will run out of this product in more than 10 years (on %s)."
 msgstr ""
 
 #: /wa-apps/shop/templates/actions/promos/PromosEditor.html:2
@@ -11312,4 +11317,448 @@ msgstr ""
 
 #: /wa-apps/shop/lib/actions/settings/stock/shopSettingsStock.action.php:145
 msgid "By shipping location"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/backend/BackendProducts.html:115
+msgid "No categories available."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/order/shopOrder.action.php:298
+#: /wa-apps/shop/lib/actions/reports/shopReportsSales.action.php:303
+msgid "Unknown channel"
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/order_states/shopSettingsOrderStateMove.controller.php:87
+msgid "State hasn't any available action"
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/order_states/shopSettingsOrderStateMove.controller.php:96
+#: /wa-apps/shop/lib/actions/settings/order_states/shopSettingsOrderStateMove.controller.php:104
+msgid "Action isn't available"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/backend/BackendOrders.html:69
+#: /wa-apps/shop/templates/actions/backend/BackendSettings.html:64
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:166
+msgid "Couriers"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/backend/BackendOrders.html:122
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:218
+msgid "Web push notifications"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/backend/BackendOrders.html:376
+#: /wa-apps/shop/lib/classes/shopWebPushNotifications.class.php:138
+msgid "Shop orders"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/backend/BackendOrders.html:379
+msgid "Thank you for subscribing!"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:21
+msgid "New courier"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:37
+msgid "Couriers are your teammates who are assigned to deliver orders to customers and to track and update order information on the go using <a href=\"http://www.shop-script.com/mobile/\" target=\"_blank\">Shop-Script mobile app</a>.<br><br> Unlike common backend users, couriers may not login to the main store backend and can only see orders they were assigned using the mobile app only. An order can be assigned to a courier upon the order SHIP action. <a href=\"https://www.shop-script.com/help/13421/shop-script-couriers/\" target=\"_blank\">Learn more about couriers</a>."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:45
+msgid "Courier name"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:52
+msgid "Courier real or nick name. Linking couriers with real contacts or backend users is optional."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:59
+msgid "Any kind of useful information about this courier, e.g. contact information, preferred delivery hours and locations."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:79
+msgid "This courier assignment will be available for orders placed on selected storefronts only."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:92
+msgid "Working"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:93
+msgid "Not working"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:100
+msgid "Last seen"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:104
+msgid "Never"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:111
+msgid "Auth code"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:121
+msgid "Not set"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:123
+msgid "Re-generate the code"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:126
+msgid "Expires:"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:131
+msgid "New auth code will be generated after you save changes."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:136
+msgid "Auth code must be entered by the courier in the mobile app to authorize it with your online store. Once authorized with the code, the mobile app may then use the connection indefinitely. In case the code was not entered, it will automatically expire in 24 hours."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:149
+msgid "View all courier orders"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/couriers/Couriers.html:169
+msgid "Courier record will be permanently deleted without the ability to restore. Delete?"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/order/Order.html:143
+msgid "deleted"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/order/Order.html:209
+#: /wa-apps/shop/lib/workflow/shopWorkflowShipAction.class.php:25
+#: /wa-apps/shop/lib/workflow/templates/ShipAction.html:8
+msgid "Courier"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/product/ProductFeatures.html:39
+#: /wa-apps/shop/templates/actions/settings/SettingsFeatures.html:129
+#: /wa-apps/shop/templates/actions/settings/SettingsFeatures.html:178
+#: /wa-apps/shop/templates/actions/settings/SettingsFeaturesFeatureList.html:17
+msgid "Only visible in backend"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/product/ProductImages.html:82
+msgid "This will remove video from the product page. Are you sure?"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/product/ProductImages.html:83
+msgid "Unlink video"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/reports/ReportsOrderItemList.html:30
+msgid "Show more"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/reports/ReportsSales.html:169
+msgid "Ordered products"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:223
+msgid "Your browser doesn't support web push technology."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:225
+msgid "However, you can configure web push notifications so that users with supported browsers can receive them."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:243
+msgid "This domain does not support push notifications. Ensure that an SSL certificate is installed for the domain name."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:259
+msgid "Push-notifications description"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:270
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:275
+msgid "Short name"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:279
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:284
+msgid "Google project number"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:288
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:293
+msgid "Safari Web ID"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:297
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:302
+msgid "OneSignal App ID"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:306
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:311
+msgid "REST API Key"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCurrencies.html:107
+msgid "Rounding"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCurrencies.html:111
+msgid "For product prices"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCurrencies.html:113
+msgid "Rounding is always applied when product price is converted to storefront currency, if rounding is enabled for that currency."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCurrencies.html:118
+msgid "For total discount amount"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCurrencies.html:120
+msgid "If checked, total discount amount of new orders will be rounded according to order currency settings."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCurrencies.html:125
+msgid "For shipping cost"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCurrencies.html:127
+msgid "If checked, shipping cost of new orders will be rounded according to order currency settings."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCurrencies.html:135
+msgid "Product prices"
+msgstr ""
+
+#: /wa-apps/shop/templates/layouts/Backend.html:279
+msgid "Date created"
+msgstr ""
+
+#: /wa-apps/shop/templates/layouts/Backend.html:282
+msgid "Date updated"
+msgstr ""
+
+#: /wa-apps/shop/templates/layouts/Backend.html:285
+msgid "Date paid"
+msgstr ""
+
+#: /wa-apps/shop/lib/classes/shopHelper.class.php:949
+msgid "The URL <strong>:url</strong> is already in use by another product (<a href=\"?action=products#/product/:another_product_id/\" target=\"_blank\" class=\"bold\">:another_product_name</a>). You may still save this product with the same URL, but the storefront will display only one (any) product by this URL."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/backend/BackendOrders.html:129
+msgid "To enable web push notifications, configure them in “Settings → <a href=\"?action=settings#/checkout/\">Checkout</a>” screen."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:227
+msgid "Check <a target=\"_blank\" href=\"https://documentation.onesignal.com/docs/website-sdk-overview\">web push documentation</a> for the list of supported browsers."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:259
+msgid "User manual on setting up web push notifications: <a href=\"%s\" target=\"_blank\">%s</a>."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:259
+msgid "http://www.shop-script.com/help/13536/push-notifications/"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:270
+msgid "Short company name"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:284
+msgid "Enter values obtained during signup on onesignal.com website"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCheckout.html:315
+msgid "Enable web push notifications for your browser to get notified on new orders on your computer screen."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsCurrencies.html:39
+msgid "(up only)"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/order/OrderEdit.html:373
+#: /wa-apps/shop/templates/actions/order/OrderEdit.html:374
+msgid "Don't notify customer on this order editing"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/orders/Orders.html:6
+msgid "<a href=\"https://www.shop-script.com/mobile/\">Mobile app</a> will help you to conveniently track sales, process orders, and manage products right on your iOS or Android-powered smartphone."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/orders/Orders.html:11
+msgid "https://itunes.apple.com/us/app/shop-script/id1108957302?mt=8"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/orders/Orders.html:12
+msgid "badge-appstore-en.png"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/orders/Orders.html:14
+msgid "https://play.google.com/store/apps/details?id=com.shop_script"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/orders/Orders.html:15
+msgid "badge-google-play-en.png"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsFollowups.html:112
+msgid "hours after the order was set to state"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsPayment.html:66
+#: /wa-apps/shop/templates/actions/settings/SettingsShipping.html:70
+msgid "You can remove settings or install the <a href=\"%s\" class=\"inline\">plugin</a>."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsPayment.html:68
+#: /wa-apps/shop/templates/actions/settings/SettingsShipping.html:72
+msgid "You can remove settings or install the plugin"
+msgstr ""
+
+#: /wa-apps/shop/templates/layouts/Backend.html:328
+msgid "An error occurred"
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/csv/shopCsvProductupload.controller.php:42
+msgid "Primary SKU"
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/stock/shopSettingsStockDelete.controller.php:27
+msgid "Unknown destination stock"
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/workflow/shopWorkflowPrepare.controller.php:30
+msgid "Syntax Error in template for action \"%s\" in line %s \"%s\". Reason: %s."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/workflow/shopWorkflowPrepare.controller.php:32
+msgid "You can edit template <a href=\"?action=settings#/orderStates/\">order states settings</a>"
+msgstr ""
+
+#: /wa-apps/shop/lib/config/my.order.php:49
+#: /wa-apps/shop/lib/config/site.php:281 /wa-apps/shop/lib/config/site.php:371
+#: /wa-apps/shop/lib/config/site.php:430
+msgid "Courier contact's default phone number"
+msgstr ""
+
+#: /wa-apps/shop/lib/config/my.order.php:44
+#: /wa-apps/shop/lib/config/site.php:276 /wa-apps/shop/lib/config/site.php:367
+#: /wa-apps/shop/lib/config/site.php:425
+msgid "Array of courier data"
+msgstr ""
+
+#: /wa-apps/shop/lib/config/my.order.php:47
+#: /wa-apps/shop/lib/config/site.php:279 /wa-apps/shop/lib/config/site.php:369
+#: /wa-apps/shop/lib/config/site.php:427
+msgid "Array of data of a courier contact stored in Contacts app, if courier is linked to an existing contact"
+msgstr ""
+
+#: /wa-apps/shop/lib/config/my.order.php:48
+#: /wa-apps/shop/lib/config/site.php:280 /wa-apps/shop/lib/config/site.php:370
+#: /wa-apps/shop/lib/config/site.php:429
+msgid "Courier contact's default email address"
+msgstr ""
+
+#: /wa-apps/shop/lib/config/my.order.php:53
+#: /wa-apps/shop/lib/config/site.php:375
+msgid "An array of action-dependent parameters, e.g. $action_data.params.tracking_number for Ship’s action tracking number"
+msgstr ""
+
+#: /wa-apps/shop/lib/config/site.php:248
+msgid "Current order status"
+msgstr ""
+
+#: /wa-apps/shop/lib/workflow/templates/RefundAction.html:5
+msgid "Attention: money will be returned to customer via payment gate"
+msgstr ""
+
+#: /wa-apps/shop/lib/workflow/templates/RefundAction.html:8
+msgid "Refund reason"
+msgstr ""
+
+#: /wa-apps/shop/lib/workflow/templates/RefundAction.html:8
+msgid "Customer decline order"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/backend/BackendOrders.html:17
+msgid "Get instant updates on your mobile device"
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/csv/CsvProductsetup.export.html:115
+msgid "Export default SKU choice value"
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:130
+msgid "Order placed by a customer or created by an administrator in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:140
+msgid "Execution of “Process” action in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:156
+msgid "Execution of “Sent” action in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:166
+msgid "Execution of “Delete” action in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:173
+msgid "Execution of “Refund” action in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:174
+msgid "Saving of changes made in an edited order in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:175
+msgid "Execution of “Restore” action in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:176
+msgid "Execution of “Mark as Completed” action in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:177
+msgid "Sending of a message to a customer by an administrator in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:178
+msgid "Adding of a comment to an order by an administrator in backend."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:181
+msgid "Merging of an order without an ID, which was paid via a mobile terminal, with another order in backend."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/reports/ReportsCustomers.html:140
+msgid "The total of orders placed by customers who initially came to your online store from %s website. Whether those customers came again from other websites to place their subsequent orders is not taken into account."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/reports/sales_report_rows.html:16
+msgid "The total of orders placed by customers upon coming from %s website. The initial traffic sources of the customers who placed these orders are not taken into account."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:189
+msgid "Registration of an automatic callback from a payment gateway; e.g., to update the order status. Depending on the callback result, additionally action “Paid” may be called afterwards."
+msgstr ""
+
+#: /wa-apps/shop/lib/actions/settings/notifications/shopSettingsNotificationsAdd.action.php:191
+msgid "Execution of “Paid” action manually in backend or automatically by a callback from a payment gateway."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsGeneral.html:175
+msgid "Select an online map engine in Installer app‘s “<a href=\"%s\">Settings</a>” screen."
+msgstr ""
+
+#: /wa-apps/shop/templates/actions/settings/SettingsGeneral.html:177
+msgid "To select an online map engine, you need access to Installer app‘s “Settings” screen."
 msgstr ""

@@ -4,8 +4,6 @@ class shopProductAction extends waViewAction
 {
     public function execute()
     {
-
-
         $product = new shopProduct(waRequest::get('id', 0, waRequest::TYPE_INT));
         if (!$product->id) {
             if (waRequest::get('id') == 'new') {
@@ -153,6 +151,7 @@ class shopProductAction extends waViewAction
         foreach ($frontend_urls as &$frontend_url) {
             $pos = strrpos($frontend_url['url'], $stuff);
             $frontend_url['base'] = $pos !== false ? rtrim(substr($frontend_url['url'], 0, $pos), '/').'/' : $frontend_url['url'];
+            $frontend_url['url'] = waIdna::dec($frontend_url['url']);
         }
         unset($frontend_url);
 
@@ -178,13 +177,6 @@ class shopProductAction extends waViewAction
          */
         $this->view->assign('backend_product_edit', wa()->event('backend_product_edit', $product));
 
-        $jsonCategoryData = array();
-        foreach($categories as $c){
-            $jsonCategoryData[] = array('id' => $c['id'], 'name' => $c['name']);
-        }
-
-
-        $this->view->assign('jsonCategoryData', json_encode($jsonCategoryData));
         $this->view->assign('categories', $categories);
 
         $this->view->assign('counters', $counters);
@@ -195,6 +187,8 @@ class shopProductAction extends waViewAction
         $this->view->assign('sidebar_counters', $sidebar_counters);
         $this->view->assign('lang', substr(wa()->getLocale(), 0, 2));
         $this->view->assign('frontend_urls', $frontend_urls);
+        $this->view->assign('url_in_use', shopHelper::isProductUrlInUse($product));
+
 
         $tag_model = new shopTagModel();
         $this->view->assign('popular_tags', $tag_model->popularTags());
@@ -237,7 +231,7 @@ class shopProductAction extends waViewAction
 
         $sm = new shopSetModel();
         $sets = array();
-        foreach($sm->getAll() as $row) {
+        foreach ($sm->getAll() as $row) {
             if (!$row['type']) {
                 $sets[$row['id']] = $row;
             }
@@ -248,6 +242,8 @@ class shopProductAction extends waViewAction
         $this->view->assign('product_sets', $spm->getByProduct($product->id));
 
         $this->view->assign('category_name', $product->category_id && isset($product->categories[$product->category_id]) ? strip_tags($product->categories[$product->category_id]['name']) : null);
+
+        $this->view->assign('orders_default_view', $config->getOption('orders_default_view'));
 
     }
 

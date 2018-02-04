@@ -67,7 +67,7 @@ class shopProductSaveController extends waJsonController
         }
 
         # verify sku_type before save
-        if ($data['type_id']) {
+        if (!empty($data['type_id'])) {
             $features_model = new shopFeatureModel();
             if ($features_model->isTypeMultipleSelectable($data['type_id'])) {
                 if ($data['sku_type'] == shopProductModel::SKU_TYPE_SELECTABLE) {
@@ -177,13 +177,17 @@ class shopProductSaveController extends waJsonController
 //                }
 
                 $forecast = $product->getNextForecast();
-                if ($forecast['date'] !== null) {
+                if ($forecast['date'] !== null && $forecast['days'] < shopProduct::MAX_FORECAST_DAYS ) {
                     $this->response['raw']['runout_str'] = sprintf(
                         _w('Based on your average monthly sales volume for %s during last three months (%d units per month), you will run out of this product in <strong>%d days</strong> (on %s).'),
                         htmlspecialchars($product->name), $forecast['sold_rounded'], $forecast['days'], wa_date("humandate", $forecast['date'])
                     );
+                } else {
+                    $this->response['raw']['runout_str'] = sprintf(
+                        _w('Based on your average monthly sales volume for %s during last three months (%d units per month), you will run out of this product in more than 10 years (on %s).'),
+                        htmlspecialchars($product->name), $forecast['sold_rounded'], wa_date("humandate", $forecast['date'])
+                    );
                 }
-
                 $this->response['storefront_map'] = $product_model->getStorefrontMap($product->id);
 
             }
@@ -286,7 +290,7 @@ class shopProductSaveController extends waJsonController
                     $frontend_url = $routing->getUrl('/frontend/product', $url_params, true);
                     $pos = strrpos($frontend_url, $product->url);
                     $frontend_urls[] = array(
-                        'url'  => $frontend_url,
+                        'url'  => waIdna::dec($frontend_url),
                         'base' => $pos !== false ? rtrim(substr($frontend_url, 0, $pos), '/').'/' : $frontend_url
                     );
                 }

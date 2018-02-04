@@ -8,7 +8,8 @@ class shopOrderEditAction extends waViewAction
      */
     private $order_model;
 
-    public function __construct($params = null) {
+    public function __construct($params = null)
+    {
         $this->order_model = new shopOrderModel();
         return parent::__construct($params);
     }
@@ -16,18 +17,19 @@ class shopOrderEditAction extends waViewAction
     public function execute()
     {
         $order_id = waRequest::get('id', null, waRequest::TYPE_INT);
+        $client_contact_id = waRequest::get('customer_id', null, waRequest::TYPE_INT);
 
         $form = null;
         $order = array();
         $shipping_address = array();
 
-        // Existing order?
-        if ($order_id) {
+
+        if ($order_id) { #Existing order
+            $client_contact_id = null;
             $order = $this->getOrder($order_id);
             $currency = $order['currency'];
             if ($order['contact_id']) {
                 $has_contacts_rights = shopHelper::getContactRights($order['contact_id']);
-
 
                 $shipping_address = shopHelper::getOrderAddress($order['params'], 'shipping');
 
@@ -45,12 +47,29 @@ class shopOrderEditAction extends waViewAction
             } else {
                 $has_contacts_rights = shopHelper::getContactRights();
             }
-        }
-        // New order?
-        else {
-            $currency = $this->getConfig()->getCurrency();
-            $has_contacts_rights = shopHelper::getContactRights();
-            $form = shopHelper::getCustomerForm();
+        } else { #NEW ORDER
+            $config = $this->getConfig();
+            /**
+             * @var shopConfig $config
+             */
+            $currency = $config->getCurrency();
+            if ($client_contact_id) {
+                try {
+                    $c = new waContact($client_contact_id);
+                    if ($shipping_address) {
+                        $c['address.shipping'] = $shipping_address;
+                    }
+                    $form = shopHelper::getCustomerForm($c);
+                    $has_contacts_rights = shopHelper::getContactRights($client_contact_id);
+                } catch (waException $e) {
+                    // Contact does not exist
+                    $client_contact_id = null;
+                }
+            }
+            if (!$client_contact_id) {
+                $has_contacts_rights = shopHelper::getContactRights();
+                $form = shopHelper::getCustomerForm();
+            }
         }
 
         $stock_model = new shopStockModel();
@@ -69,31 +88,92 @@ class shopOrderEditAction extends waViewAction
          */
         $this->view->assign('backend_order_edit', wa()->event('backend_order_edit', $order));
 
+        $shipping_methods = $this->getShipMethods($shipping_address, $order);
+
+        $discount = array(
+            'description'    => '',
+            'items_discount' => array(),
+            'value'          => 0,
+        );
+
+        if (!empty($order['id'])) {
+            if (empty($c)) {
+                $c = new waContact();
+            }
+            $data = array(
+                'id'       => $order['id'],
+                'currency' => $order['currency'],
+                'items'    => $this->itemsForDiscount($order['currency'], $order['items']),
+                'contact'  => $c,
+                'total'    => $order['subtotal'],
+            );
+            unset($data['shipping']);
+
+            $discount['value'] = shopDiscounts::calculate($data, false, $discount['description']);
+
+            if (isset($data['shipping']) && ($data['shipping'] == 0)) {
+                foreach ($shipping_methods as &$m) {
+                    if (!is_string($m['rate'])) {
+                        $m['rate'] = 0;
+                    }
+                    unset($m);
+                }
+            }
+
+            $template = array(
+                'product' => _w('Total discount for this order item: %s.'),
+                'service' => _w('Total discount for this service: %s.'),
+            );
+            foreach ($data['items'] as $id => $item) {
+                $item['total_discount'] = round(ifset($item['total_discount'], 0), 4);
+                if (!empty($item['total_discount'])) {
+                    switch ($item['type']) {
+                        case 'service':
+                            $selector = sprintf('%d_%d', $item['_parent_index'], $item['service_id']);
+                            break;
+                        default:
+                            $selector = $item['_index'];
+                            break;
+                    }
+                    $discount['items_discount'][] = array(
+                        'value'    => $item['total_discount'],
+                        'html'     => sprintf($template[$item['type']], shop_currency_html(-$item['total_discount'], $data['currency'], $data['currency'])),
+                        'selector' => $selector,
+                    );
+                }
+            }
+        }
+
+
         $this->view->assign(array(
-            'form'     => $form,
-            'order_storefront' => $this->getOrderStorefront($order),
-            'order'    => $order,
-            'stocks'   => $stocks,
-            'currency' => $currency,
-            'count_new' => $count_new,
-            'taxes_count' => $taxes_count,
-            'shipping_address' => $shipping_address,
-            'has_contacts_rights' => $has_contacts_rights,
+            'form'                         => $form,
+            'order_storefront'             => $this->getOrderStorefront($order),
+            'order'                        => $order,
+            'stocks'                       => $stocks,
+            'currency'                     => $currency,
+            'count_new'                    => $count_new,
+            'taxes_count'                  => $taxes_count,
+            'shipping_address'             => $shipping_address,
+            'has_contacts_rights'          => $has_contacts_rights,
             'customer_validation_disabled' => wa()->getSetting('disable_backend_customer_form_validation'),
-            'shipping_methods' => $this->getShipMethods($shipping_address, $order),
-            'ignore_stock_count' => wa()->getSetting('ignore_stock_count'),
-            'storefronts' => $this->getStorefronts(),
+            'shipping_methods'             => $shipping_methods,
+            'ignore_stock_count'           => wa()->getSetting('ignore_stock_count'),
+            'storefronts'                  => shopHelper::getStorefronts(true),
+            'new_order_for_client'         => $client_contact_id,
+            'discount'                     => $discount,
         ));
     }
 
     private function getShipMethods($shipping_address, $order)
     {
+        $shipping_id = null;
         if ($order) {
             $order_items = $order['items'];
             $order_currency = $order['currency'];
             $order_total = $order['subtotal'] - $order['discount'];
             if (!empty($order['params']['shipping_id'])) {
-                $allow_external_for = array($order['params']['shipping_id']);
+                $shipping_id = $order['params']['shipping_id'];
+                $allow_external_for = array($shipping_id);
             } else {
                 $allow_external_for = array();
             }
@@ -103,12 +183,26 @@ class shopOrderEditAction extends waViewAction
             $order_currency = null;
             $order_total = 0;
         }
-        return shopHelper::getShippingMethods($shipping_address, $order_items, array(
-            'currency' => $order_currency,
-            'total_price' => $order_total,
-            'no_external' => true,
+        $params = array(
+            'currency'           => $order_currency,
+            'total_price'        => $order_total,
+            'no_external'        => true,
             'allow_external_for' => $allow_external_for,
-        ));
+            'shipping_params'    => array(),
+            'custom_html'        => true,
+        );
+
+        if ($shipping_id && !empty($order['params'])) {
+            foreach ($order['params'] as $name => $value) {
+                if (preg_match('@^shipping_params_(.+)$@', $name, $matches)) {
+                    if (!isset($params['shipping_params'][$shipping_id])) {
+                        $params['shipping_params'][$shipping_id] = array();
+                    }
+                    $params['shipping_params'][$shipping_id][$matches[1]] = $value;
+                }
+            }
+        }
+        return shopHelper::getShippingMethods($shipping_address, $order_items, $params);
     }
 
     private function getOrder($order_id)
@@ -174,7 +268,11 @@ class shopOrderEditAction extends waViewAction
     private function getCropSize()
     {
         if ($this->crop_size === null) {
-            $this->crop_size = $this->getConfig()->getImageSize('crop_small');
+            $config = $this->getConfig();
+            /**
+             * @var shopConfig $config
+             */
+            $this->crop_size = $config->getImageSize('crop_small');
         }
         return $this->crop_size;
     }
@@ -185,15 +283,13 @@ class shopOrderEditAction extends waViewAction
         if (empty($item['image_id'])) {
             $item['url_crop_small'] = null;
         } else {
-            $item['url_crop_small'] = shopImage::getUrl(
-                array(
-                    'id' => $item['image_id'],
-                    'filename' => $item['image_filename'],
-                    'product_id' => $item['id'],
-                    'ext' => $item['ext']
-                ),
-                $size
+            $image = array(
+                'id'         => $item['image_id'],
+                'filename'   => $item['image_filename'],
+                'product_id' => $item['id'],
+                'ext'        => $item['ext'],
             );
+            $item['url_crop_small'] = shopImage::getUrl($image, $size);
         }
 
         // aggregated stocks count icon for product
@@ -203,18 +299,19 @@ class shopOrderEditAction extends waViewAction
 
         foreach ($item['skus'] as &$sku) {
             if (empty($sku['fake'])) {
-                // detaled stocks count icon for sku
+                // detailed stocks count icon for sku
                 if (empty($sku_stocks[$sku['id']])) {
                     $sku['icon'] = shopHelper::getStockCountIcon($sku['count'], null, true);
                 } else {
                     $icons = array();
                     $counts_htmls = array();
                     foreach ($sku_stocks[$sku['id']] as $stock_id => $stock) {
-                        $icon  = &$icons[$stock_id];
-                        $icon  = shopHelper::getStockCountIcon($stock['count'], $stock_id, true);
-                        $count_html = &$counts_htmls[$stock_id];
-                        $count_html = _w('%d left', '%d left', $stock['count']);
-                        unset($icon, $count_html);
+                        $icons[$stock_id] = shopHelper::getStockCountIcon($stock['count'], $stock_id, true);
+                        if ($stock['count'] === null) {
+                            $counts_htmls[$stock_id] = sprintf(str_replace('%d', '%s', _w('%d left')), '∞');
+                        } else {
+                            $counts_htmls[$stock_id] = _w('%d left', '%d left', $stock['count']);
+                        }
                     }
                     $sku['icon'] = shopHelper::getStockCountIcon($sku['count'], null, true);
                     $sku['icons'] = $icons;
@@ -225,28 +322,107 @@ class shopOrderEditAction extends waViewAction
         unset($sku);
     }
 
-    public function getStorefronts()
-    {
-        $storefronts = array();
-        foreach (wa()->getRouting()->getByApp('shop') as $domain => $domain_routes) {
-            foreach ($domain_routes as $route) {
-                $url = rtrim($domain.'/'.$route['url'], '/*');
-                if (strpos($url, '/') !== false) {
-                    $url .= '/';
-                }
-                $storefronts[] = $url;
-            }
-        }
-        return $storefronts;
-    }
-
     public function getOrderStorefront($order)
     {
-        $storefront = rtrim((string) ifset($order['params']['storefront'], ''), '/*');
+        $storefront = rtrim((string)ifset($order['params']['storefront'], ''), '/*');
         if (strpos($storefront, '/') !== false) {
             $storefront .= '/';
         }
         return $storefront;
     }
-}
 
+    /**
+     * Convert tree-like structure where services are part of products
+     * into flat list where services and products are on the same level.
+     */
+    protected function itemsForDiscount($order_currency, $items_tree)
+    {
+        $items = array();
+
+        foreach ($items_tree as $index => $i) {
+            $product = $i;
+            $items[] = $this->workupProductItem($i['item'], $product, $order_currency, $index);
+
+            if (!empty($i['services'])) {
+                foreach ($i['services'] as $service) {
+                    if (!empty($service['item'])) {
+                        $items[] = $this->workupServiceItem($service, $product, $index);
+                    }
+                }
+            }
+        }
+
+        return $items;
+    }
+
+    private function workupProductItem($i, &$product, $order_currency, $index)
+    {
+        unset($product['item']);
+        if (!empty($product['services'])) {
+            foreach ($product['services'] as &$s) {
+                unset($s['item']);
+            }
+            unset($s);
+        }
+
+        $product_id = $i['product_id'];
+        $sku_id = $i['sku_id'];
+        unset($i['services']);
+
+        $i += array(
+            'type'               => 'product',
+            'service_id'         => null,
+            'service_variant_id' => null,
+            'purchase_price'     => 0,
+            'sku_code'           => '',
+            'name'               => 'product_id='.$product_id,
+        );
+
+        if (!empty($product['skus'][$sku_id])) {
+            $sku = $product['skus'][$sku_id];
+
+            if (!empty($sku['name'])) {
+                $i['name'] = sprintf('%s (%s)', ifempty($product['name'], $i['name']), $sku['name']);
+            } else {
+                $i['name'] = ifempty($product['name'], $i['name']);
+            }
+
+            if (empty($sku['fake'])) {
+                $i['purchase_price'] = shop_currency($sku['purchase_price'], $product['currency'], $order_currency, false);
+                $i['sku_code'] = $sku['sku'];
+            } else {
+                $i['purchase_price'] = 0;
+                $i['sku_code'] = null;
+            }
+
+            $i['product'] = $product;
+            $i['_index'] = $index;
+        }
+        return $i;
+    }
+
+    private function workupServiceItem($service, $product, $index)
+    {
+        $s = $service['item'];
+        unset($service['item']);
+
+        $s = array(
+                'type'               => 'service',
+                'price'              => $s['price'],
+                'service_id'         => $service['id'],
+                'service_variant_id' => 0,
+                'purchase_price'     => 0,
+                'name'               => 'service_id='.$s['service_id'],
+            ) + $s;
+
+
+        $variant = reset($service['variants']);
+        $s['name'] = $service['name'].($variant['name'] ? ' ('.$variant['name'].')' : '');
+        $s['service_variant_id'] = $variant['id'];
+        $s['service'] = $service;
+        $s['product'] = $product;
+        $s['_parent_index'] = $index;
+
+        return $s;
+    }
+}

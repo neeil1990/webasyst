@@ -1,10 +1,13 @@
 <?php
-class shopPushnotificationEnableMethod extends waAPIMethod
+class shopPushnotificationEnableMethod extends shopApiMethod
 {
     protected $method = 'POST';
+    protected $courier_allowed = true;
 
     public function execute()
     {
+        $this->response = 'ok';
+
         $client_id = waRequest::post('client_id', '', 'string');
         if (!strlen($client_id)) {
             throw new waAPIException('invalid_param', 'invalid client_id', 400);
@@ -25,9 +28,10 @@ class shopPushnotificationEnableMethod extends waAPIMethod
 
         $push_client_model->insert(array(
             'contact_id' => wa()->getUser()->getId(),
+            'create_datetime' => date('Y-m-d H:i:s'),
+            'api_token' => waRequest::request('access_token', '', 'string'),
             'client_id' => $client_id,
             'shop_url' => $shop_url,
         ), 1);
-        $this->response = 'ok';
     }
 }

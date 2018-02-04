@@ -78,13 +78,13 @@ class shopProductFeaturesModel extends waModel implements shopProductStorageInte
             $sql .= " JOIN ".$this->table." t".$i."
                 ON t".$i.".product_id = s.product_id AND (t".$i.".sku_id IS NULL OR t".$i.".sku_id = s.id)";
         }
-        $sql .= " WHERE s.product_id IN (i:product_ids) AND s.available = 1";
+        $sql .= " WHERE s.product_id IN (i:product_ids) AND s.available > 0";
         if ($in_stock_only) {
             $sql .= ' AND (s.count IS NULL OR s.count > 0)';
         }
         $i = 0;
         foreach ($features as $f => $v) {
-            $sql .= " AND t".$i.".feature_id = ".(int)$f." AND t".$i.".feature_value_id ";
+            $sql .= " AND t".$i.".feature_id = ".(int)$f." AND t".$i.".sku_id IS NOT NULL AND t".$i.".feature_value_id ";
             if (is_array($v)) {
                 $sql .= 'IN ('.implode(',', array_map('intval', $v)).')';
             } else {
@@ -104,12 +104,12 @@ class shopProductFeaturesModel extends waModel implements shopProductStorageInte
         return $this->exec($sql);
     }
 
-    public function getData(shopProduct $product)
+    public function getData(shopProduct $product, $public_only = false)
     {
-        return $this->getValues($product->getId(), null, $product->type_id, $product->sku_type);
+        return $this->getValues($product->getId(), null, $product->type_id, $product->sku_type, $public_only);
     }
 
-    public function getValues($product_id, $sku_id = null, $type_id = null, $sku_type = 0)
+    public function getValues($product_id, $sku_id = null, $type_id = null, $sku_type = 0, $public_only = false)
     {
         $result = array();
         $features = array();
@@ -120,11 +120,17 @@ class shopProductFeaturesModel extends waModel implements shopProductStorageInte
         // even if divider is not saved for particular product in shop_product_features.
         //
         if ($type_id) {
+            $status_sql = '';
+            if ($public_only) {
+                $status_sql = "AND f.status='public'";
+            }
+
             $sql = "SELECT f.id AS feature_id, f.code, f.type, f.multiple, tf.sort
                     FROM shop_feature AS f
                         JOIN shop_type_features AS tf
                             ON tf.feature_id = IFNULL(f.parent_id,f.id)
                     WHERE tf.type_id=i:type_id
+                        {$status_sql}
                     ORDER BY tf.sort";
             $data = $this->query($sql, array(
                 'type_id' => $type_id,
@@ -180,6 +186,11 @@ class shopProductFeaturesModel extends waModel implements shopProductStorageInte
             }
         }
 
+        $status_sql = '';
+        if ($public_only) {
+            $status_sql = "AND f.status='public'";
+        }
+
         if ($order_by) {
             $order_by = 'ORDER BY '.join(', ', $order_by);
         } else {
@@ -193,6 +204,7 @@ class shopProductFeaturesModel extends waModel implements shopProductStorageInte
                     {$tf_join}
                 WHERE pf.product_id = i:id
                     AND {$sku_where}
+                    {$status_sql}
                 {$order_by}";
         $data = $this->query($sql, array(
             'id'      => $product_id,
@@ -247,15 +259,18 @@ class shopProductFeaturesModel extends waModel implements shopProductStorageInte
 
         // Fetch actual values from shop_feature_values_* tables
         foreach ($storages as $type => $value_ids) {
-            $model = shopFeatureModel::getValuesModel($type);
-            $feature_values = $model->getValues('id', $value_ids);
-            foreach ($feature_values as $feature_id => $values) {
-                if (isset($features[$feature_id])) {
-                    $f = $features[$feature_id];
-                    $result[$f['code']] = ($sku_id || empty($f['multiple'])) ? reset($values) : $values;
-                } else {
-                    //obsolete feature value
+            if ($model = shopFeatureModel::getValuesModel($type)) {
+                $feature_values = $model->getValues('id', $value_ids);
+                foreach ($feature_values as $feature_id => $values) {
+                    if (isset($features[$feature_id])) {
+                        $f = $features[$feature_id];
+                        $result[$f['code']] = ($sku_id || empty($f['multiple'])) ? reset($values) : $values;
+                    } else {
+                        //obsolete feature value
+                    }
                 }
+            } else {
+                waLog::log(sprintf('Feature model for type %s not found', $type), 'shop/features.error.log');
             }
         }
 
@@ -292,7 +307,7 @@ class shopProductFeaturesModel extends waModel implements shopProductStorageInte
          */
         foreach ($codes as $code) {
             if (isset($product->features_selectable[$code])) {
-                $data[$code]=array();
+                $data[$code] = array();
             }
         }
 

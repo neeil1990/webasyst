@@ -14,12 +14,11 @@ class shopFrontendShippingController extends waJsonController
         if (waRequest::method() == 'post') {
             wa()->getStorage()->close();
             $shipping_id = waRequest::post('shipping_id');
+            $default_customer = waRequest::post('customer');
+            $default_address = ifset($default_customer['address.shipping'], array());
             $customer = waRequest::post('customer_'.$shipping_id);
-            if (isset($customer['address.shipping'])) {
-                $address = $customer['address.shipping'];
-            } else {
-                $address = array();
-            }
+
+            $address = ifset($customer['address.shipping'], array());
 
             if ($shipping_id) {
                 $this->response = $this->getRates($shipping_id, $items, $address, $total);
@@ -70,6 +69,7 @@ class shopFrontendShippingController extends waJsonController
     protected function getRates($shipping_id, $items, $address, $total)
     {
         try {
+            //XXX use shopCheckoutShipping class
             $plugin = shopShipping::getPlugin(null, $shipping_id);
             $weight_unit = $plugin->allowedWeightUnit();
             $dimension = shopDimension::getInstance()->getDimension('weight');
@@ -80,6 +80,7 @@ class shopFrontendShippingController extends waJsonController
                     }
                 }
             }
+            $round_shipping = wa()->getSetting('round_shipping');
             $currency = $plugin->allowedCurrency();
             $config = wa('shop')->getConfig();
             /**
@@ -89,12 +90,57 @@ class shopFrontendShippingController extends waJsonController
             if ($currency != $current_currency) {
                 $total = shop_currency($total, $current_currency, $currency, false);
             }
-            $rates = $plugin->getRates($items, $address, array('total_price' => $total));
+
+            foreach ($items as &$item) {
+                if (!empty($item['currency'])) {
+                    if ($item['currency'] != $currency) {
+                        $item['price'] = shop_currency($item['price'], $item['currency'], $currency, false);
+                    }
+                    unset($item['currency']);
+                }
+            }
+            unset($item);
+
+            $params = array(
+                'total_price' => $total,
+            );
+            if ($shipping_params = waRequest::post('shipping_'.$shipping_id)) {
+                $params['shipping_params'] = $shipping_params;
+            }
+            $rates = $plugin->getRates($items, $address, $params);
             if (is_array($rates)) {
                 $is_html = waRequest::request('html');
+                // When free shipping coupon is used, display all rates as 0
+                $checkout_data = wa('shop')->getStorage()->read('shop/checkout');
+                $free_shipping = false;
+                if (!empty($checkout_data['coupon_code'])) {
+                    empty($cm) && ($cm = new shopCouponModel());
+                    $coupon = $cm->getByField('code', $checkout_data['coupon_code']);
+                    if ($coupon && $coupon['type'] == '$FS') {
+                        $free_shipping = true;
+                    }
+                }
                 foreach ($rates as $r_id => &$r) {
                     $r['id'] = $r_id;
+                    if (!isset($r['rate'])) {
+                        $r['rate'] = null;
+                    } elseif (is_array($r['rate'])) {
+                        if ($r['rate']) {
+                            $r['rate'] = max($r['rate']);
+                        } else {
+                            $r['rate'] = null;
+                        }
+                    }
                     if ($r['rate'] !== null) {
+                        if ($free_shipping) {
+                            $r['rate'] = 0;
+                        }
+                        // Apply rounding. This converts all rates to current frontend currency.
+                        if ($r['rate'] && $round_shipping) {
+                            $r['rate'] = shopRounding::roundCurrency(shop_currency($r['rate'], $r['currency'], $current_currency, false), $current_currency);
+                            $r['currency'] = $current_currency;
+                        }
+
                         $r['rate_html'] = $is_html ? shop_currency_html($r['rate'], $r['currency']) : shop_currency($r['rate'], $r['currency']);
                         $r['rate'] = shop_currency($r['rate'], $r['currency']);
                     }
@@ -102,7 +148,6 @@ class shopFrontendShippingController extends waJsonController
                 unset($r);
                 return array_values($rates);
             } elseif (!$rates) {
-                // @todo: translate
                 return _w('Not available');
             }
         } catch (waException $ex) {
