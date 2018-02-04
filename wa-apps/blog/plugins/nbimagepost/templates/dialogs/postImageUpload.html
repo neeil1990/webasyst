@@ -66,7 +66,6 @@
                             onSelect: updateCoords,
                             naturalWidth: newimage.width,
                             naturalHeight: newimage.height,
-                            //setSelect:   [ 200, 200, 50, 50 ],
                             boxWidth: 1024,
                             boxHeight: 768,
                             bgColor: 'white',
@@ -86,7 +85,7 @@
                 id: $('#id_post').val(),
                 href: $('#cropbox').attr('src')
             };
-            if(crop.x){
+            if(crop.w || crop.h){
                 $.post( "?module=ajax&action=cropimage", crop, function( data ) {
                     if(data.data){
                         var newimage = new Image();
@@ -94,7 +93,6 @@
                         newimage.onload = function() {
                             $('#nb-image-upload-now').html('<img src="' + newimage.src + '" style="width:100%">');
                             $('#nb-post-image-upload-dialog').trigger('close');
-                            location.reload();
                         }
                     }
                 }, "json");
@@ -104,8 +102,6 @@
          return false;
         });
     });
-
-
 
     function updateCoords(c)
     {
