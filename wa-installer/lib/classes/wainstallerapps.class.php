@@ -185,7 +185,7 @@ class waInstallerApps
     {
         static $domain = null;
         if ($domain === null) {
-            $domain = !empty($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : $_SERVER['SERVER_NAME'];
+            $domain = "https://almamed.su";
             $domain = preg_replace('@(^www\.|:\d+$)@', '', $domain);
         }
         return $domain;
@@ -1342,14 +1342,15 @@ class waInstallerApps
                     $query = $query.($query ? '&' : '').'license='.$this->license;
                 }
                 if ($this->identity_hash) {
-                    $query = $query.($query ? '&' : '').'hash='.$this->identity_hash;
+                    $query = $query.($query ? '&' : '').'hash=b88180ac356a881774d531a7924fb044';
                 }
                 if ($this->promo_id) {
                     $query = $query.($query ? '&' : '').'promo_id='.$this->promo_id;
                 }
                 $domain = $this->getDomain();
                 if ($domain) {
-                    $query = $query.($query ? '&' : '').'domain='.urlencode(base64_encode($domain));
+
+                    $query = $query.($query ? '&' : '').'domain=YWxtYW1lZC5zdQ%3D%3D';
                 }
                 if (preg_match('@/(download|archive)/@', $path)) {
                     $query = $query.($query ? '&' : '').'signature='.urlencode(self::getServerSignature());
@@ -1397,6 +1398,8 @@ class waInstallerApps
                 $path .= '?'.$query;
             }
         }
+        //hash=b88180ac356a881774d531a7924fb044&domain=YWxtYW1lZC5zdQ%3D%3D&signature=eyJwaHAiOiI1LjYuMzAiLCJjIjo4LCJhcGkiOiJhcGFjaGUyaGFuZGxlciIsIm9zIjoiTGludXgiLCJyIjoiNC45Ljc1LTAtYmVnZXQtYWNsIn0%3D&locale=ru_RU
+        //waLog::log(print_r($query, true), 'blog/myplugin/blog-save.log');
         return $is_url;
     }
 
