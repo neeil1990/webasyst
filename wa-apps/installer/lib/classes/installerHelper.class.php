@@ -252,10 +252,10 @@ class installerHelper
         $result = false;
         $paths = array();
         $paths[] = dirname(__FILE__).'/.svn';
-        $paths[] = dirname(__FILE__).'/.git';
+    //    $paths[] = dirname(__FILE__).'/.git';
         $root_path = wa()->getConfig()->getRootPath();
         $paths[] = $root_path.'/.svn';
-        $paths[] = $root_path.'/.git';
+    //    $paths[] = $root_path.'/.git';
         foreach ($paths as $path) {
             if (file_exists($path)) {
                 $result = true;
