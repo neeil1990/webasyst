@@ -1,4 +1,4 @@
-
+# Redirect 404 misses to script that generates thumbnails
 <ifModule mod_rewrite.c>
     RewriteEngine On
 
