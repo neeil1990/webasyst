@@ -28,7 +28,7 @@ msgstr "Выберите характеристику, по которой бу�
 msgid "Saved"
 msgstr "Сохранено"
 
-#: /wa-apps/shop/plugins/brands/lib/config/plugin.php:4
+
 msgid "Brands"
 msgstr "Бренды"
 

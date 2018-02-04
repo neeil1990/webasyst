@@ -13,16 +13,9 @@ Class blogNbimagepostPlugin extends blogPlugin{
         );
     }
 
-
-    public function backendStream(){
-        return array(
-            'menu' => 'Для просмотра или загрузки миниатюры перейдите в запись',
-        );
-    }
-
     public function blogHeader(){
 
-            $this->addCss('css/myplugin.css');
+            $this->addCss('css/nbimagepost.css');
             $this->addJs('js/script.js');
 
     }
