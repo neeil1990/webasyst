@@ -1,11 +1,21 @@
 /**
- *
+ * @typedef {object} installerMethod
+ * @property {string|boolean} name
+ * @property {Array} params
  */
-/* (function($) { */
+/**
+ * @typedef {object} installerHashPath `/list[:query][:offset?]/item/tab/?param1=value2`
+ * @property {string} list One of `apps`, `plugins` or `themes`
+ * @property {string} query
+ * @property {string|boolean} item Item id
+ * @property {string|boolean} tab Tab id
+ * @property {string} tail Query tail
+ * @property {string} raw
+ * @property {object} filter Key-Value filter data
+ */
+
 $.layout = {
-    /*
-     * #/list[:query][:offset?]/item/tab/?param1=value2
-     */
+    /** @param installerHashPath **/
     path: {
         'list': null, /* apps|plugins|themes */
         'query': null, /* all|app=shop|top related to */
@@ -17,7 +27,10 @@ $.layout = {
     },
     options: {
         default_list: 'featured',
-        default_query: {},
+        default_query: {
+            plugins: '',
+            widgets: ''
+        },
         title: 'Installer',
         debug: true,
         duration: 500,
@@ -25,13 +38,17 @@ $.layout = {
         inline_query: ['commercial', 'sort']
 
     },
+    /** @param {JQuery} */
+    $app: null,
+    /** @param {JQuery} */
     $sidebar: null,
+    /** @param {JQuery} */
     $list: null,
     queue: [],
     time: {
         start: new Date(),
         /**
-         * @return int
+         * @return string Time string
          */
         interval: function (relative) {
             var d = new Date();
@@ -78,7 +95,7 @@ $.layout = {
     },
     initRouting: function () {
         var self = this;
-        if (typeof($.History) != "undefined") {
+        if (typeof($.History) !== "undefined") {
             $.History.bind(function () {
                 $.layout.dispatch();
             });
@@ -99,15 +116,7 @@ $.layout = {
     /**
      *
      * @param {String} path
-     * @return {{
-     *  list:{String},
-     *  query:{String},
-     *  item:{String},
-     *  tab:{String},
-     *  tail:{String},
-     *  raw:{String},
-     *  filter:{}
-     * }}
+     * @return {installerHashPath}
      */
     parsePath: function (path) {
         /**
@@ -115,8 +124,8 @@ $.layout = {
          * /apps&filter1=value1&filter2=value2/%app_id%/
          * /apps&filter1=value1&filter2=value2/%app_id%/tab/
          * /plugins&filter1=value1&filter2=value2/%parent/slug%/
-         * /plugins&filter1=value1&filter2=value2/%parent/slug%/%pugin_id%/
-         * /plugins&filter1=value1&filter2=value2/%parent/slug%/%pugin_id%/%tab%/
+         * /plugins&filter1=value1&filter2=value2/%parent/slug%/%plugin_id%/
+         * /plugins&filter1=value1&filter2=value2/%parent/slug%/%plugin_id%/%tab%/
          * /themes&filter1=value1&filter2=value2/
          * /themes&filter1=value1&filter2=value2&slug=%parent%/
          * /themes&filter1=value1&filter2=value2/slug%/%theme_id%/%tab%/
@@ -154,12 +163,12 @@ $.layout = {
                 break;
             case 'plugins':
                 if (matches.length) {
-                    query_size = (matches[0] == 'wa-plugins') ? 2 : 1;
+                    query_size = (matches[0] === 'wa-plugins') ? 2 : 1;
                     query = matches.slice(0, query_size).join('/') || '';
                     matches = matches.slice(query_size);
-                    if (item = matches.shift() || '') {
+                    item = matches.shift() || '';
+                    if (item) {
                         item = query + '/' + item;
-                        // query = this.path.query;
                     }
                 } else {
                     query = this.options.default_query.plugins;
@@ -167,12 +176,12 @@ $.layout = {
                 break;
             case 'widgets':
                 if (matches.length) {
-                    query_size = (matches[0] == 'wa-plugins') ? 2 : 1;
+                    query_size = (matches[0] === 'wa-plugins') ? 2 : 1;
                     query = matches.slice(0, query_size).join('/') || '';
                     matches = matches.slice(query_size);
-                    if (item = matches.shift() || '') {
+                    item = matches.shift() || '';
+                    if (item) {
                         item = query + '/' + item;
-                        // query = this.path.query;
                     }
                 } else {
                     query = this.options.default_query.widgets;
@@ -189,7 +198,7 @@ $.layout = {
             query: query,
             item: item,
             tab: matches.length ? matches.shift() || false : false,
-            tail: matches.join('/') || '',
+            tail: (matches ? matches.join('/') : ''),
             raw: path,
             filter: filter
         };
@@ -197,7 +206,7 @@ $.layout = {
 
     /**
      *
-     * @param {String} selector
+     * @param {String} [selector]
      * @return {jQuery}
      */
     container: function (selector) {
@@ -206,7 +215,7 @@ $.layout = {
 
     /**
      *
-     * @param {Object|String} path
+     * @param {installerHashPath|String} [path]
      */
     dispatch: function (path) {
         if (!this.$app) {
@@ -218,7 +227,7 @@ $.layout = {
         if (path === undefined) {
             path = window.location.hash;
         }
-        if (typeof(path) == 'string') {
+        if (typeof(path) === 'string') {
             path = this.parsePath(path);
         }
         $.layout.trace('$.layout.dispatch started', [this.path, path.raw]);
@@ -228,76 +237,78 @@ $.layout = {
         var child;
 
         for (var subject in this.handlers) {
-            /**
-             *
-             * @type {*|String}
-             */
-            var Subject = this.helper.ucfirst(subject);
+            if (this.handlers.hasOwnProperty(subject)) {
+                /**
+                 *
+                 * @type {*|String}
+                 */
+                var Subject = this.helper.ucfirst(subject);
 
-            if (path[subject] != this.path[subject]) {
-                $.layout.trace('$.layout.dispatch ' + subject + ': ', this.path[subject] + '→' + path[subject]);
+                if (path[subject] !== this.path[subject]) {
+                    $.layout.trace('$.layout.dispatch ' + subject + ': ', this.path[subject] + '→' + path[subject]);
 
-                if (this.path[subject]) {
-                    queue.unshift('blur' + Subject + this.helper.ucfirst(this.path[subject]));
-                    queue.unshift('blur' + Subject);
-                    if (Parent && (Parent != 'Tab')) {
-                        queue.push('load' + Parent);
-                    }
-                }
-
-                if (this.handlers[subject]['child']) {
-                    child = this.handlers[subject]['child'];
-                    if (path[child] && (path[child] != this.path[child])) {
-
-                        this.updateRelated(subject, path);
-                        $.layout.trace('$.layout.dispatch pass throw to child ' + child + ': ', this.path[child] + '→' + path[child]);
-                        continue;
-                    }
-                }
-
-                if (path[subject]) {
-                    queue.push('load' + Subject);
-                    queue.push('load' + Subject + this.helper.ucfirst(path[subject]));
-                }
-                break;
-            } else {
-                var changed = false;
-                if (this.handlers[subject]['related']) {
-                    var related = this.handlers[subject]['related'];
-
-                    for (var i = 0; i < related.length; i++) {
-                        var rel = related[i];
-
-                        switch (typeof(path[rel])) {
-                            case 'object':
-                                if ($.param(this.path[rel]) != $.param(path[rel])) {
-                                    $.layout.trace('$.layout.dispatch ' + rel + ': ', $.param(this.path[rel]) + '→' + $.param(path[rel]));
-                                    queue.push('load' + Subject);
-                                    changed = true;
-                                }
-                                break;
-                            case 'string':
-                                if (this.path[rel] != path[rel]) {
-                                    $.layout.trace('$.layout.dispatch ' + rel + ': ', this.path[rel] + '→' + path[rel]);
-                                    queue.push('load' + Subject);
-                                    queue.push('load' + Subject + this.helper.ucfirst(path[subject]));
-                                    changed = true;
-                                }
-                                break;
+                    if (this.path[subject]) {
+                        queue.unshift('blur' + Subject + this.helper.ucfirst(this.path[subject]));
+                        queue.unshift('blur' + Subject);
+                        if (Parent && (Parent !== 'Tab')) {
+                            queue.push('load' + Parent);
                         }
-                        if (changed) {
-                            break;
-                        }
+                    }
 
+                    if (this.handlers[subject]['child']) {
+                        child = this.handlers[subject]['child'];
+                        if (path[child] && (path[child] !== this.path[child])) {
+
+                            this.updateRelated(subject, path);
+                            $.layout.trace('$.layout.dispatch pass throw to child ' + child + ': ', this.path[child] + '→' + path[child]);
+                            continue;
+                        }
+                    }
+
+                    if (path[subject]) {
+                        queue.push('load' + Subject);
+                        queue.push('load' + Subject + this.helper.ucfirst(path[subject]));
+                    }
+                    break;
+                } else {
+                    var changed = false;
+                    if (this.handlers[subject]['related']) {
+                        var related = this.handlers[subject]['related'];
+
+                        for (var i = 0; i < related.length; i++) {
+                            var rel = related[i];
+
+                            switch (typeof(path[rel])) {
+                                case 'object':
+                                    if ($.param(this.path[rel]) !== $.param(path[rel])) {
+                                        $.layout.trace('$.layout.dispatch ' + rel + ': ', $.param(this.path[rel]) + '→' + $.param(path[rel]));
+                                        queue.push('load' + Subject);
+                                        changed = true;
+                                    }
+                                    break;
+                                case 'string':
+                                    if (this.path[rel] !== path[rel]) {
+                                        $.layout.trace('$.layout.dispatch ' + rel + ': ', this.path[rel] + '→' + path[rel]);
+                                        queue.push('load' + Subject);
+                                        queue.push('load' + Subject + this.helper.ucfirst(path[subject]));
+                                        changed = true;
+                                    }
+                                    break;
+                            }
+                            if (changed) {
+                                break;
+                            }
+
+                        }
                     }
                 }
+                Parent = Subject;
             }
-            Parent = Subject;
         }
 
         $.layout.trace('$.layout.dispatch complete with queue', queue.length);
         var name;
-        while (name = queue.shift()) {
+        while ((name = queue.shift())) {
             $.layout.trace('$.layout.dispatch queue', name);
             // standard convention: if method return false than stop bubble up
             if (this.call(name, [path]) === false) {
@@ -317,12 +328,12 @@ $.layout = {
 
                 switch (typeof(path[rel])) {
                     case 'object':
-                        if ($.param(this.path[rel]) != $.param(path[rel])) {
+                        if ($.param(this.path[rel]) !== $.param(path[rel])) {
                             this.path[rel] = path[rel];
                         }
                         break;
                     case 'string':
-                        if (this.path[rel] != path[rel]) {
+                        if (this.path[rel] !== path[rel]) {
                             this.path[rel] = path[rel];
                         }
                         break;
@@ -332,7 +343,7 @@ $.layout = {
         }
     },
 
-    call: function (name, args, callback) {
+    call: function (name, args) {
         var result = null;
         var callable = this.isCallable(name);
         args = args || [];
@@ -365,12 +376,12 @@ $.layout = {
         if (path.query) {
             url += '&slug=' + path.query;
         }
-        url = url.replace(/\\bsort=[^\\/&]+/, '');
+        url = url.replace(/\bsort=[^\/&]+/, '');
         var filter;
         if (path.filter && (filter = decodeURIComponent($.param({'filter': path.filter})))) {
             var regexp;
             for (var i = 0; i < this.options.inline_query.length; i++) {
-                regexp = new RegExp('&?\\bfilter\\[' + this.options.inline_query[i] + '\\]=[^&]+');
+                regexp = new RegExp('&?\bfilter\[' + this.options.inline_query[i] + '\]=[^&]+');
                 filter = filter.replace(regexp, '');
             }
             if (filter.length) {
@@ -379,7 +390,7 @@ $.layout = {
         }
         var id = this.helper.getListId(path);
         var $container = this.container(id);
-        if ($container.length && ($container.html() != 'null') && ($container.html() != '')) {
+        if ($container.length && ($container.html() !== 'null') && ($container.html() !== '')) {
             this.focusList(path);
             this.dispatch(path);
         } else {
@@ -406,7 +417,7 @@ $.layout = {
         path = path || this.path;
         var $body = $('body');
         $body.removeClass('i-apps i-themes i-plugins i-widgets i-featured');
-        if (['apps', 'themes', 'plugins', 'widgets', 'featured'].indexOf(path.list) >= 0) {
+        if (['apps', 'themes', 'plugins', 'widgets', 'featured'].indexOf(path.list || '') >= 0) {
             $body.addClass('i-' + path.list);
         }
         this.$app.find('> div.content:visible').hide();
@@ -427,7 +438,7 @@ $.layout = {
         if (path.filter) {
             for (param in path.filter) {
                 if (path.filter.hasOwnProperty(param)) {
-                    if (param == 'slug') {
+                    if (param === 'slug') {
                         query += '&' + param + '=' + path.filter[param];
                         lists = path.filter[param].split(',');
                     } else {
@@ -476,7 +487,8 @@ $.layout = {
         var internal_filter;
         $filters.each(function () {
             var $scope = $(this);
-            if (internal_filter = '' + $scope.data('filter')) {
+            internal_filter = '' + $scope.data('filter');
+            if (internal_filter) {
                 var re = new RegExp('&?(' + internal_filter + ')=[^&\/%]*', 'g');
                 internal_filter = filter.match(re) || '';
                 filter = filter.replace(re, '');
@@ -494,14 +506,14 @@ $.layout = {
             //update icon of category
             //update selected list
 
-            $list = $query.find('a[data-href^="' + href + '%filter%\\/' + lists[i] + '"]:first');
+            $list = $query.find('a[data-href^="' + href + '%filter%\/' + lists[i] + '"]:first');
 
             if (!$list.length) {//themes case
-                $list = $query.find('a[data-href^="' + href + '%filter%&slug=' + lists[i] + '\\/"]:first');
+                $list = $query.find('a[data-href^="' + href + '%filter%&slug=' + lists[i] + '\/"]:first');
             }
 
             if (filter && !$list.length) {
-                $list = $query.find('a[data-href^="' + href + filter + '%filter%\\/' + lists[i] + '"]:first');
+                $list = $query.find('a[data-href^="' + href + filter + '%filter%\/' + lists[i] + '"]:first');
             }
 
             if (!$list.length) {
@@ -543,13 +555,13 @@ $.layout = {
         var sort_field = 'sort';
         for (i = 0; i < $.layout.options.inline_query.length; i++) {
             param = $.layout.options.inline_query[i];
-            if (param == 'sort') {
+            if (param === 'sort') {
                 sort = filter[param] || null;
             } else {
                 params[param] = filter[param] || null;
-                if (params[param] == 'true') {
+                if (params[param] === 'true') {
                     params[param] = true;
-                } else if (params[param] == 'false') {
+                } else if (params[param] === 'false') {
                     params[param] = false;
                 }
             }
@@ -583,9 +595,9 @@ $.layout = {
                 } else {
                     for (i = 0; i < $.layout.options.inline_query.length; i++) {
                         param = $.layout.options.inline_query[i];
-                        if ((param != 'sort') && (params[param] !== null)) {
+                        if ((param !== 'sort') && (params[param] !== null)) {
                             data[param] = $el.data('filter-' + param);
-                            if (data[param] != params[param]) {
+                            if (data[param] !== params[param]) {
                                 matched = false;
                                 break;
                             }
@@ -617,12 +629,16 @@ $.layout = {
     searchList: function (search, $input) {
         var filter = this.path.filter;
         try {
-            if (search) {
-                filter['search'] = new RegExp(search, 'i');
-                $.layout.trace('$.layout.searchList', search);
+            var current_search = $input.data('search');
+            if (current_search !== search) {
+                if (search) {
+                    filter['search'] = new RegExp(search, 'i');
+                    $.layout.trace('$.layout.searchList', search);
+                }
+                $input.removeClass('error').attr('title', '');
+                $input.data('search', search);
+                this.filterList(this.$list, filter);
             }
-            $input.removeClass('error').attr('title', '');
-            this.filterList(this.$list, filter);
         } catch (ex) {
             $input.addClass('error').attr('title', ex.message);
         }
@@ -644,8 +660,8 @@ $.layout = {
 
         var $container = this.$app.find('> div#' + id);
 
-        if (!$container.length && ($container.html() != 'null') && ($container.html() != '')) {
-            var href = path.item.replace(/([ #;&,.+*~\':"!^$[\]()=>|\/])/g, '\\$1');
+        if (!$container.length && ($container.html() !== 'null') && ($container.html() !== '')) {
+            var href = path.item.replace(/([ #;&,.+*~':"!^$[\]()=>|\/])/g, '\\$1');
             var item_selector = '#wa-app > div.content:first a[href*="\\/' + href + '\\/"]:first';
             var $item = $(item_selector).parents('li');
             //put item name as content before it loaded
@@ -685,26 +701,26 @@ $.layout = {
         $nav.find('li.selected').removeClass('selected');
         if (path.tab) {
             $container.find('div.i-screenshots:first').hide();
-            if ($nav.find('> li').length == 1) {
+            if ($nav.find('> li').length === 1) {
                 $nav.find('> li').show();
             }
         } else {
             $container.find('div.i-screenshots:first').show();
-            if ($nav.find('> li').length == 1) {
+            if ($nav.find('> li').length === 1) {
                 $nav.find('> li').hide();
             }
         }
         var item = path.item;
-        if ((path.list == 'plugins') && (!path.item.match(/^wa-plugins\//))) {
+        if ((path.list === 'plugins') && (!path.item.match(/^wa-plugins\//))) {
             item = item.replace(/\//, '/' + path.list + '/');
         }
-        id = '#tab-' + (item + '-' + (path.tab || 'info')).replace(/([ #;&,.+*~\':"!^$[\]()=>|\/])/g, '\\$1');
+        id = '#tab-' + (item + '-' + (path.tab || 'info')).replace(/([ #;&,.+*~':"!^$[\]()=>|\/])/g, '\\$1');
         //tab-pocketlists-info
         var href = path.item + '/';
         if (path.tab) {
             href += path.tab + '/';
         }
-        href = href.replace(/([ #;&,.+*~\':"!^$[\]()=>|\/])/g, '\\$1');
+        href = href.replace(/([ #;&,.+*~':"!^$[\]()=>|\/])/g, '\\$1');
         $nav.find('a[href$="' + href + '"]').parents('li').addClass('selected');
         $container.find(id).show();
     },
@@ -769,13 +785,13 @@ $.layout = {
         }
         if (this.options.animation) {
             $container.show().animate({
-                'margin-left': '0px'
+                "margin-left": '0px'
             }, this.options.duration).queue(function () {
                 $(this).dequeue();
             });
         } else {
             $container.show().css({
-                'margin-left': '0px'
+                "margin-left": '0px'
             });
         }
 
@@ -787,18 +803,19 @@ $.layout = {
 
         $body.addClass(this.premium.getClass());
 
-
         if (this.path.filter) {
             var filter = '';
+            var skip = ['slug', 'search'];
             for (var param in this.path.filter) {
-                if (this.path.filter.hasOwnProperty(param)) {
-                    if (param != 'slug') {
-                        filter += '&' + param + '=' + this.path.filter[param];
-                    }
+                if (this.path.filter.hasOwnProperty(param) && (skip.indexOf(param) < 0)) {
+                    filter += '&' + param + '=' + this.path.filter[param];
                 }
             }
-            $container.find('a.js-item-link[data-href^="\\#"]').each(function () {
-                self.helper.updateUrl($(this), (self.path.list == 'themes' ) ? [self.path.query, filter] : [filter, self.path.query]);
+            var filter_params = (self.path.list === 'themes' ) ? [self.path.query, filter] : [filter, self.path.query];
+
+            var $links = $container.find('a.js-item-link[data-href^="\\#"]');
+            $links.each(function () {
+                self.helper.updateUrl($(this), filter_params);
             });
         }
 
@@ -829,7 +846,7 @@ $.layout = {
     /**
      * Handle js section interactions
      *
-     * @param {jQuery} $el
+     * @param {JQuery} $el
      * @return {Boolean}
      */
     click: function ($el) {
@@ -850,15 +867,15 @@ $.layout = {
 
     load: function (path) {
         var $container = this.container();
-        if (true || !$container.length || ($container.data('product-id') != path.id)) {
+        if (true || !$container.length || ($container.data('product-id') !== path.id)) {
             var self = this;
             var url = '?module=' + path.list;
             $.layout.trace('$.layout.load', url);
             this.$sidebar.find('li.selected').removeClass('selected');
             $.layout.loadContent(url, function () {
                 self.path.list = path.list;
-                var href = path.list.replace(/([ #;&,.+*~\':"!^$[\]()=>|\/])/g, '\\$1');
-                self.$sidebar.find('a[href="\\#\\/' + href + '\\/"]').parent('li').addClass('selected');
+                var href = path.list.replace(/([ #;&,.+*~':"!^$[\]()=>|\/])/g, '\\$1');
+                self.$sidebar.find('a[href="\#\/' + href + '\/"]').parent('li').addClass('selected');
                 self.dispatch(path);
             }, this.container(this.helper.getListId(path)));
         }
@@ -869,29 +886,39 @@ $.layout = {
         this.random = r;
         var self = this;
         $.layout.trace('$.layout.loadContent', [url, $container]);
-        $.get(url, function (result) {
-            if (!$container && (self.random != r)) {
-                // too late: user clicked something else.
-                return;
-            }
-            $container = $container || self.container();
-            if (result) {
-                $container.html(result);
-                $('html, body').animate({
-                    scrollTop: 0
-                }, 200);
-                $container.trigger($.Event('wa_load_list'));
-                if ((self.random == r) && (typeof(callback) == 'function')) {
-                    try {
-                        $container.find('.js-inline-search:first').val('').on('change keyup', function () {
-                            var $input = $(this);
-                            self.searchList($input.val() || null, $input);
-                        });
-                        callback();
-                    } catch (e) {
-                        $.layout.error('$.layout.loadContent callback error: ' + e.message, e);
-                    }
+        $.ajax(url, {
+            success: function (result) {
+                if (!$container && (self.random !== r)) {
+                    // too late: user clicked something else.
+                    console.log('too late: user clicked something else.');
+                    return;
                 }
+                $container = $container || self.container();
+                if (result) {
+                    $container.html(result);
+                    $('html, body').animate({
+                        scrollTop: 0
+                    }, 200);
+                    if (self.random === r) {
+                        if ((typeof(callback) === 'function')) {
+                            try {
+                                $container.find('.js-inline-search:first').val('').on('change keyup', function () {
+                                    var $input = $(this);
+                                    self.searchList($input.val() || null, $input);
+                                });
+                                callback();
+                            } catch (e) {
+                                $.layout.error('$.layout.loadContent callback error: ' + e.message, e);
+                            }
+                        }
+                    } else {
+                        self.trace('$.layout.loadContent skip callback', url);
+                    }
+                    $container.trigger($.Event('wa_load_list'));
+                }
+            },
+            error: function () {
+
             }
         });
     },
@@ -905,8 +932,8 @@ $.layout = {
     /**
      * @param {Array} args
      * @param {object} scope
-     * @param {String} name
-     * @return {{name:{String},params:{Array}}}
+     * @param {String} [name]
+     * @return {installerMethod}
      */
     getMethod: function (args, scope, name) {
         var chunk, callable;
@@ -917,9 +944,9 @@ $.layout = {
         if (args.length) {
             $.layout.trace('$.getMethod', args);
             name = name || args.shift();
-            while (chunk = args.shift()) {
+            while ((chunk = args.shift())) {
                 name += chunk.substr(0, 1).toUpperCase() + chunk.substr(1);
-                callable = (typeof(scope[name]) == 'function');
+                callable = (typeof(scope[name]) === 'function');
                 $.layout.trace('$.getMethod try', [name, callable, args]);
                 if (callable === true) {
                     method.name = name;
@@ -934,7 +961,7 @@ $.layout = {
      * Debug trace helper
      *
      * @param {String} message
-     * @param {} data
+     * @param {Object} data
      */
     trace: function (message, data) {
         var timestamp = null;
@@ -957,7 +984,7 @@ $.layout = {
         }
     },
     isCallable: function (name) {
-        return (typeof(this[name]) == 'function');
+        return (typeof(this[name]) === 'function');
     },
     premium: {
         classes: {},
@@ -973,49 +1000,56 @@ $.layout = {
 
     },
     helper: {
+        url_map: [
+            new RegExp('%filter%'),
+            new RegExp('%query%'),
+            new RegExp('%sort%')
+        ],
+        /**
+         *
+         * @param $el
+         * @param filter
+         */
         updateUrl: function ($el, filter) {
             var href = '' + $el.data('href');
-            if (href) {
-                var internal_filter = '' + $el.data('filter');
+            if (href.length) {
+                var internal_filter = $el.data('filter');
                 var re;
-                if (internal_filter.length) {
+                if (internal_filter && internal_filter.length) {
                     re = new RegExp('&(' + internal_filter + ')=[^&\/%]*', 'g');
                 } else {
                     re = new RegExp('');
                 }
 
-                var map = [
-                    new RegExp('%filter%'),
-                    new RegExp('%query%'),
-                    new RegExp('%sort%')
-                ];
-
-                for (var i = 0; i < filter.length; i++) {
-                    if (filter[i] != undefined) {
-                        href = href.replace(map[i], filter[i].replace(re, ''));
+                for (var i = 0; i < this.url_map.length; i++) {
+                    if ((filter[i] !== undefined) && filter[i].length) {
+                        href = href.replace(this.url_map[i], filter[i].replace(re, ''));
+                    } else {
+                        href = href.replace(this.url_map[i], '');
                     }
                 }
-                $el.attr('href', href.replace(/%\w+%/g, '').replace(/[&\/]+\//g, '/').replace(/([&\/])\1+/g, '$1'));
+
+                href = href.replace(/%\w+%/g, '').replace(/[&\/]+\//g, '/').replace(/([&\/])\1+/g, '$1');
+                $el.attr('href', href);
             }
         },
         getItemId: function (path) {
             return 'ajax-item-' + this.replace(path.list) + '-' + this.replace(path.item);
         },
         getListId: function (path) {
-            var filter = '';
+            var filter;
             if (path.filter && (filter = decodeURIComponent($.param({'filter': path.filter})))) {
                 var regexp;
                 for (var i = 0; i < $.layout.options.inline_query.length; i++) {
-                    regexp = new RegExp('&?\\bfilter\\[' + $.layout.options.inline_query[i] + '\\]=[^&\/]+');
+                    regexp = new RegExp('&?\bfilter\[' + $.layout.options.inline_query[i] + '\]=[^&\/]+');
                     filter = filter.replace(regexp, '');
                 }
             }
 
 
-            var id = 'ajax-list-' + this.replace(path.list)
+            return 'ajax-list-' + this.replace(path.list)
                 + '-' + this.replace(path.query || '')
                 + this.replace('' + filter);
-            return id;
         },
         replace: function (string) {
             return ('' + (string || '')).replace(/\//g, '-').replace(/,/g, '_').replace(/[^\w_\-]+/g, '');
@@ -1061,7 +1095,7 @@ $.layout = {
             }
             return true;
         },
-        submit: function (form, event) {
+        submit: function (form) {
             var $form = $(form);
             $form.find(':submit').attr('disabled', true).after('<i class="icon16 loading"></i>');
             try {
@@ -1115,9 +1149,9 @@ var UserTouch = (function () {
         finger_place_y_end = null;
         touch_delta_x = null;
         touch_delta_y = null;
-        touch_is_vertical = false,
-            time_start = ( new Date() ).getTime(),
-            time_end = false;
+        touch_is_vertical = false;
+        time_end = false;
+        time_start = ( new Date() ).getTime();
 
         UserTouch = {
             offsetStart: {
@@ -1139,8 +1173,8 @@ var UserTouch = (function () {
             touchTime: false
         };
 
-        element.addEventListener("touchmove", on_touch_move, false);
-        element.addEventListener("touchend", on_touch_end, false);
+        element.addEventListener("touch" + "move", on_touch_move, false);
+        element.addEventListener("touch" + "end", on_touch_end, false);
     };
 
     var on_touch_move = function (event) {
@@ -1186,13 +1220,13 @@ var UserTouch = (function () {
 
     var on_touch_end = function () {
         // отключаем обработчики
-        element.removeEventListener("touchmove", on_touch_move);
-        element.removeEventListener("touchend", on_touch_end);
+        element.removeEventListener("touch" + "move", on_touch_move);
+        element.removeEventListener("touch" + "end", on_touch_end);
     };
 
     var bindEvents = function () {
         element = document.body;
-        element.addEventListener("touchstart", on_touch_start, false);
+        element.addEventListener("touch" + "start", on_touch_start, false);
     };
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -1287,17 +1321,17 @@ var SectionSlider = (function ($) {
             }
         });
 
-        window.addEventListener("orientationchange", function () {
+        window.addEventListener("orientation" + "change", function () {
             that.reInitializing();
         });
 
-        slider.addEventListener("touchstart", function () {
+        slider.addEventListener("touch" + "start", function () {
             if (!that.is_mobile) {
                 that.is_mobile = true;
             }
         }, false);
 
-        slider.addEventListener("touchend", function () {
+        slider.addEventListener("touch" + "end", function () {
             that.onTouchEnd();
         }, false);
 
@@ -1311,11 +1345,11 @@ var SectionSlider = (function ($) {
 
         if (Math.abs(UserTouch.offsetDelta['x']) > min_width) {
 
-            if (UserTouch.orientation.x == "right") {
+            if (UserTouch.orientation.x === "right") {
                 $beforeLink.trigger("click");
             }
 
-            if (UserTouch.orientation.x == "left") {
+            if (UserTouch.orientation.x === "left") {
                 $nextLink.trigger("click");
             }
         }
@@ -1327,7 +1361,7 @@ var SectionSlider = (function ($) {
             offset;
 
         // Left offset
-        if (type == "left") {
+        if (type === "left") {
             if (that.slide_left >= slide_move) {
                 that.slide_left -= slide_move;
             } else {
@@ -1336,7 +1370,7 @@ var SectionSlider = (function ($) {
         }
 
         // Right offset
-        if (type == "right") {
+        if (type === "right") {
 
             // If the number of slides more shift
             if (that.slide_count > slide_move) {
@@ -1359,7 +1393,7 @@ var SectionSlider = (function ($) {
         }
 
         // Fix for right corner
-        if (that.slide_left > 0 && type == "left" && offset == that.offset) {
+        if (that.slide_left > 0 && type === "left" && offset === that.offset) {
             that.moveSlider(type);
             return false;
         }

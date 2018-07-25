@@ -12,7 +12,7 @@
  * @package installer
  */
 
-class installerThemesViewAction extends waViewAction
+class installerThemesViewAction extends installerItemsAction
 {
     public function execute()
     {
@@ -108,13 +108,8 @@ class installerThemesViewAction extends waViewAction
         $this->view->assign('app', $app);
         $this->view->assign('slug', $search['slug']);
         $this->view->assign('vendor', $search['vendor']);
-        $return_url = waRequest::get('return_url', waRequest::server('HTTP_REFERER'));
-        if ($return_hash = waRequest::get('return_hash')) {
-            if ($return_hash = preg_replace('@^#@', '', $return_hash)) {
-                $return_url .= '#'.$return_hash;
-            }
-        }
         $this->view->assign('identity_hash', installerHelper::getHash());
-        $this->view->assign('return_url', $return_url);
+        $this->view->assign('return_url', $this->getReturnUrl());
+        $this->view->assign('design_url', installerHelper::getDesignUrl($app_id));
     }
 }

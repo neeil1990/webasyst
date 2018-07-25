@@ -205,4 +205,14 @@ abstract class installerItemsAction extends waViewAction
         $this->view->assign('messages', $messages);
         $this->view->assign('title', _w('Installer'));
     }
+
+    protected function getReturnUrl()
+    {
+        $url = waRequest::get('return_url', waRequest::server('HTTP_REFERER'));
+        $hash = preg_replace('@^#@', '', waRequest::get('return_hash'));
+        if ($hash) {
+            $url .= '#'.$hash;
+        }
+        return $url;
+    }
 }

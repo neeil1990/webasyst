@@ -139,8 +139,18 @@ abstract class installerExtrasRemoveAction extends waViewAction
                 }
             }
             $deleted_extras = array();
+            $ip = waRequest::getIp();
             foreach ($queue as $q) {
                 if ($this->removeExtras($q['app_slug'], $q['ext_id'])) {
+
+                    $params = array(
+                        'type' => $this->extras_type,
+                        'id'   => sprintf('%s/%s', $q['app_slug'], $q['ext_id']),
+                        'name' => $q['name'],
+                        'ip'   => $ip,
+                    );
+
+                    $this->logAction('item_uninstall', $params);
                     $deleted_extras[] = $q['name'];
                 }
             }

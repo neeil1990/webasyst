@@ -103,8 +103,11 @@
                             {else}
                                 {* VALID LICENSE *}
                                 <p><em class="i-installed-label"><i class="icon16 yes"></i>{sprintf("[`This is a valid licensed installation of %s on <strong>%s</strong>.`]",$app.name|escape, installerHelper::getDomain()|escape)}</em></p>
-
-                                <a class="button green" href="{* $app.buymore_url|escape *}https://www.webasyst.com/buy/store/{$app.slug}{if $wa->locale() == 'ru_RU'}?locale=ru_RU{/if}">[`Buy more licenses`]</a>
+                                {if empty($app.buymore_url)||true}
+                                    {$app.buymore_url="https://www.webasyst.com/buy/store/`$app.slug`"}
+                                    {if $wa->locale() == 'ru_RU'}{$app.buymore_url="`$app.buymore_url`?locale=ru_RU"}{/if}
+                                    {/if}
+                                <a class="button green" href="{$app.buymore_url|escape}">[`Buy more licenses`]</a>
 
                                 <p>{sprintf("[`Additional licenses are required if you are using %s on more than one domain name (<a href='%s' target='_blank'>one license per domain</a>).`]",$app.name|escape, '[`http://www.webasyst.com/help/1200/paid-app-licensing/`]')}</p>
                             {/if}
@@ -307,7 +310,7 @@
             {if $app.installed}
                 {if !$app.system}
                 <div class="block top-padded align-center clear-both">
-                    <a class="no-underline" href="?module=apps&amp;action=remove&amp;app_id[{$app.slug}]={$app.installed.vendor}{if !empty($app.installed.edition)}:{$app.installed.edition}{/if}" onClick="return confirm(this.title);" title="[`This will delete application source code and data without the ability to recover. Are you sure?`]">
+                    <a class="no-underline" href="?module=apps&amp;action=remove&amp;app_id[{$app.slug}]={$app.installed.vendor}{if !empty($app.installed.edition)}:{$app.installed.edition}{/if}" onClick="return confirm(this.title);" title="[`This will delete the app’s source code and settings without the recovery option. Delete the app?`]">
                         <i class="icon16 delete"></i>[`Delete this app`]
                     </a>
                 </div>

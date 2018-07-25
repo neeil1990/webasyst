@@ -47,9 +47,12 @@ class installerUpdateExecuteController extends waJsonController
 
                         $this->getStorage()->close();
                         $this->urls = $updater->update($this->urls);
-                        if (waRequest::request('install')) {
+                        $install = waRequest::request('install');
+                        if ($install) {
                             $this->install();
                         }
+
+                        $this->logItems($install);
 
                         $this->response['sources'] = $this->getResult();
                         $this->response['current_state'] = $updater->getState();
@@ -84,6 +87,9 @@ class installerUpdateExecuteController extends waJsonController
                     }
                     $ob = ob_get_clean();
                     if ($ob) {
+
+                        $ob = preg_replace('@([\?&]hash=)([^&\?]+)@', '$1*hash*', $ob);
+
                         $this->response['warning'] = $ob;
                         waLog::log('Output at '.__METHOD__.': '.$ob);
                     }
@@ -98,6 +104,38 @@ class installerUpdateExecuteController extends waJsonController
         } catch (Exception $ex) {
             throw $ex;
             //TODO use redirect/errors
+        }
+    }
+
+    private function logItems($install)
+    {
+        $action = $install ? 'item_install' : 'item_update';
+        $ip = waRequest::getIp();
+        foreach ($this->urls as $target => $url) {
+            if (empty($url['skipped'])) {
+                $params = null;
+                if (preg_match('@^wa-apps/([^/]+)$@', $target, $matches)) {
+                    $params = array(
+                        'type' => 'apps',
+                        'id'   => $matches[1],
+                        'ip'   => $ip,
+                    );
+                } elseif (preg_match('@^wa-apps/([^/]+)/(plugins|themes|widgets)/([^/]+)$@', $target, $matches)) {
+                    $params = array(
+                        'type' => $matches[2],
+                        'id'   => sprintf('%s/%s', $matches[1], $matches[3]),
+                        'ip'   => $ip,
+                    );
+                } elseif (preg_match('@^wa-plugins/(payment|shipping|sms)/([^/]+)$@', $target, $matches)) {
+                    $params = array(
+                        'type' => 'plugins',
+                        'id'   => sprintf('wa-plugins/%s/%s', $matches[1], $matches[2]),
+                        'ip'   => $ip,
+                    );
+                }
+
+                $this->logAction($action, $params);
+            }
         }
     }
 
@@ -116,9 +154,15 @@ class installerUpdateExecuteController extends waJsonController
             //TODO workaround exceptions
             if (empty($url['skipped']) && preg_match('@^wa-apps/@', $target)) {
                 try {
-                    $apps->installWebAsystItem(preg_replace('@^wa-apps/@', '', $target), null, isset($url['edition']) ? $url['edition'] : true);
+                    $slug = preg_replace('@^wa-apps/@', '', $target);
+                    $apps->installWebAsystItem($slug, null, isset($url['edition']) ? $url['edition'] : true);
                 } catch (Exception $e) {
-                    waLog::log($e->getMessage());
+                    $message = sprintf(
+                        'Error occurred during install %s: %s',
+                        $target,
+                        $e->getMessage()
+                    );
+                    waLog::log($message);
                     $url['skipped'] = true;
                 }
                 $this->model->ping();
@@ -134,18 +178,8 @@ class installerUpdateExecuteController extends waJsonController
 
     private function cleanup()
     {
-        $apps = array();
-        foreach ($this->urls as $url) {
-            if (!isset($url['skipped']) || !$url['skipped']) {
-                if (preg_match('@^wa-apps/[^/]+$@', $url['target'])) {
-                    $apps[] = array(
-                        'installed' => true,
-                        'slug'      => $url['target'],
-                    );
-                }
-            }
-        }
-        installerHelper::flushCache($apps);
+        $this->model->ping();
+        installerHelper::flushCache();
         $this->model->ping();
     }
 

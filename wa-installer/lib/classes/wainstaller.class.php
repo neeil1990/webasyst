@@ -243,7 +243,11 @@ class waInstaller
                         $this->current_chunk_id = isset($update['slug']) ? $update['slug'] : $chunk_id;
                         $paths = array();
                         $paths[$update_path] = true;
-                        $cache_path = 'wa-cache/apps/'.($this->current_chunk_id == 'wa-system' ? 'webasyst' : $this->current_chunk_id);
+                        $dir = ($this->current_chunk_id == 'wa-system' ? 'webasyst' : $this->current_chunk_id);
+                        $dir = str_replace('/widgets/', '_widgets/', $dir);
+                        $dir = preg_replace('@^/?wa-apps/@', '', $dir);
+                        $dir = str_replace('@/plugins/@', '_', $dir);
+                        $cache_path = 'wa-cache/apps/'.$dir;
                         $paths[$cache_path] = true;
                         $this->run(self::STAGE_CLEANUP, false, $paths);
                     }
@@ -621,6 +625,7 @@ class waInstaller
                         }
                     }
                 }
+                $source = preg_replace('@([\?&](previous_)?hash=)([^&\?]+)@', '$1*hash*', $source);
                 throw new Exception("Error while opening source stream [{$source}]. Hint: {$hint}");
             } elseif (!empty($http_response_header)) {
                 //XXX ????
@@ -1581,7 +1586,7 @@ class waInstaller
                 $memory_peak = function_exists('memory_get_peak_usage') ? sprintf('%0.2fMb', memory_get_peak_usage() / 1048576) : 'unknown';
                 if ($debug_data) {
                     $debug_data = "\n{".str_repeat('-', 60)."\n".var_export($debug_data, true)."\n}".str_repeat('-', 60);
-
+                    $debug_data = preg_replace('@([\?&]hash=)([^&\?]+)@', '$1*hash*', $debug_data);
                 }
                 $log = date('c');
                 $log .= sprintf('%05d', ++$log_counter);

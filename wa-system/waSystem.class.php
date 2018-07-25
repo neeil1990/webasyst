@@ -343,6 +343,14 @@ class waSystem
         return $result;
     }
 
+    /**
+     * @var null|string $url
+     * @return waCdn
+     */
+    public function getCdn($url = null)
+    {
+        return new waCdn($url);
+    }
 
     /**
      * Returns auth adapter.
@@ -684,16 +692,29 @@ class waSystem
                 }
                 $log_model = new waLogModel();
                 $log_model->insert(array(
-                    'app_id' => $app,
+                    'app_id'     => $app,
                     'contact_id' => $contact_id,
-                    'datetime' => date("Y-m-d H:i:s"),
-                    'params' => 'frontend',
-                    'action' => 'logout',
+                    'datetime'   => date("Y-m-d H:i:s"),
+                    'params'     => 'frontend',
+                    'action'     => 'logout',
                 ));
             } else {
+                // We destroy session even if user is not logged in.
+                // This clears session-based pseudo-auth for many apps.
+                wa()->getStorage()->destroy();
+                // Do not allow custom URL in this case
+                // because of redirection-based phishing attacks
                 $logout_url = null;
             }
 
+            // Make sure redirect is to the same domain
+            if (!empty($logout_url)) {
+                $domain = $this->getRouting()->getDomain(null, true);
+                $next_domain = @parse_url($logout_url, PHP_URL_HOST);
+                if ($next_domain && $domain !== $next_domain) {
+                    $logout_url = null;
+                }
+            }
             // make redirect after logout
             if (empty($logout_url)) {
                 $logout_url = $this->config->getRequestUrl(false, true);
@@ -986,19 +1007,15 @@ class waSystem
                 self::$apps = array();
                 throw new waException('File wa-config/apps.php not found.', 600);
             }
-            if (!file_exists($file) || filemtime($file) < filemtime($this->getConfig()->getPath('config', 'apps')) || waSystemConfig::isDebug()) {
+            if (!file_exists($file) || filemtime($file) < filemtime($this->getConfig()->getPath('config', 'apps'))) {
                 waFiles::create($this->getConfig()->getPath('cache').'/config');
                 $all_apps = include($this->getConfig()->getPath('config', 'apps'));
                 $all_apps['webasyst'] = true;
                 self::$apps = array();
                 foreach ($all_apps as $app => $enabled) {
                     if ($enabled) {
-                        waLocale::loadByDomain($app, $locale);
                         $app_config = $this->getAppPath('lib/config/app.php', $app);
                         if (!file_exists($app_config)) {
-                            if (false && SystemConfig::isDebug()) {
-                                throw new waException("Config not found. Create config by path ".$app_config);
-                            }
                             continue;
                         }
                         $app_info = include($app_config);
@@ -1013,6 +1030,7 @@ class waSystem
                             }
                         }
                         $app_info['id'] = $app;
+                        waLocale::loadByDomain($app, $locale);
                         $app_info['name'] = _wd($app, $app_info['name']);
                         if (isset($app_info['icon'])) {
                             if (is_array($app_info['icon'])) {
@@ -1163,15 +1181,15 @@ class waSystem
      * Returns URL corresponding to specified combination of app's module and action based on the contents of
      * configuration file routing.php of specified app.
      *
-     * @param string  $path      App, module, and action IDs separated by slash /
-     * @param array   $params    Associative array of the following optional parameters:
+     * @param string     $path      App, module, and action IDs separated by slash /
+     * @param array|bool $params    Associative array of the following optional parameters:
      *     - 'domain': domain name specified for one of existing websites
      *     - 'module': module id
      *     - 'action': action id
      *     - dynamic URL parameters described in app configuration file routing.php for specified module and action;
      *         e.g., 'category_url' is such a dynamic parameter in the following routing configuration entry:
      *         'category/<category_url>/' => 'frontend/category',
-     * @param  bool    $absolute  Flag requiring to return an absolute URL instead of a relative one.
+     * @param  bool  $absolute  Flag requiring to return an absolute URL instead of a relative one.
      * @param string $domain
      * @param string $route
      * @return string
@@ -1489,7 +1507,7 @@ class waSystem
             $path = $this->getConfig()->getPath('apps');
             foreach (self::$handlers['apps'][$event_app_id][$name] as $app_id) {
                 $file_path = $path.'/'.$app_id.'/lib/handlers/'.$event_app_id.".".$name.".handler.php";
-                if (!file_exists($file_path)) {
+                if (!file_exists($file_path) || !wa()->appExists($app_id)) {
                     continue;
                 }
                 wa($app_id);

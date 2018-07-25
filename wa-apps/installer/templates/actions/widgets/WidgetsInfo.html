@@ -119,7 +119,7 @@
                             {* VALID LICENSE *}
                             <p><em class="i-installed-label"><i class="icon16 yes"></i>{sprintf("[`This is a valid licensed installation of %s on <strong>%s</strong>.`]",$widget.name|escape, installerHelper::getDomain()|escape)}</em></p>
 
-                             <a class="button green" href="{* $widget.buymore_url|escape *}https://www.webasyst.com/my/#/neworder/">[`Buy more licenses`]</a>
+                             <a class="button green" href="{$widget.buymore_url|default:'https://www.webasyst.com/my/#/neworder/'|escape}">[`Buy more licenses`]</a>
 
                             <p>{sprintf("[`Additional licenses are required if you are using %s on more than one domain name (<a href='%s' target='_blank'>one license per domain</a>).`]",$widget.name|escape, '[`http://www.webasyst.com/help/1200/paid-app-licensing/`]')}</p>
                         {/if}
@@ -301,7 +301,7 @@
         {if $widget.installed}
             {if !$widget.system && empty($widget.inbuilt)}
                 <div class="block top-padded align-center clear-both">
-                    <form action="?module=widgets&amp;action=remove" method="POST"  onsubmit="return confirm(this.title);" title="[`This will delete application source code and data without the ability to recover. Are you sure?`]">
+                    <form action="?module=widgets&amp;action=remove" method="POST"  onsubmit="return confirm(this.title);" title="[`This will delete the widget’s source code and settings without the recovery option. Delete the widget?`]">
                         {$wa->csrf()}
                         <input type="hidden" name="extras_id[{$widget.slug}]" value="{$widget.installed.vendor|default:'dummy'}{if !empty($widget.installed.edition)}:{$widget.installed.edition}{/if}">
                         <input type="submit" value="[`Delete this widget`]" class="button red">

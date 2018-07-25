@@ -35,7 +35,16 @@ class installerAppsEnableController extends waJsonController
                             'module' => 'frontend',
                         );
                     }
+
                     installerHelper::getInstaller()->updateAppConfig($app_id, true, $routing);
+
+                    $params = array(
+                        'type' => 'apps',
+                        'id'   => $app_id,
+                        'ip'   => waRequest::getIp(),
+                    );
+
+                    $this->logAction('item_enable', $params);
                 }
             }
 

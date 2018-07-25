@@ -35,7 +35,7 @@
 
 </div>
 {/if}
-
+{if !empty($featured_apps)}
 <section class="i-section-wrapper block double-padded i-apps" style="padding-top: 10px;">
     <header class="i-header-wrapper">
         <h2 class="i-header heading">[`Recommended apps`]</h2>
@@ -55,6 +55,8 @@
         </ul>
     </div>
 </section>
+{/if}
+{if !empty($apps)}
 {$themes_meet=false}
 {capture name='themes'}
 <section class="i-section-wrapper block double-padded i-themes" style="background: transparent;">
@@ -83,6 +85,7 @@
 </section>
 {/capture}
 {if $themes_meet}{$smarty.capture.themes}{/if}
+
 
 {$plugins_meet=false}
 {capture name='plugins'}
@@ -137,8 +140,7 @@
         </ul>
     </div>
 </section>
-
-</div>
+{/if}
 
 <script>
 ( function($, SectionSlider) {

@@ -177,22 +177,13 @@
             {$wa->csrf()}
         </div>
     </div>
+
     {if $options.save_panel}
     <div class="wa-page-save-panel block bordered-top">
-        <div class="wa-dropdown">
-            <div class="wa-drop-link">
-                <a class="inline-link" id="wa-editor-help-link" href="#">
-                    <i class="icon16 cheatsheet"></i><b><i>[s`Cheat sheet`]</i></b>
-                    <i class="icon10 uarr no-overhanging"></i>
-                </a>
-                <div id="wa-editor-help" class="wa-dropdown-block"></div>
-            </div>
-        </div>
-
+        {$wa->getCheatSheetButton(["app" => {$wa->app()}, 'page_id' => {$page.id|default:''}])}
         <input id="wa-page-button" type="submit" class="button green" value="[s`Save`]" />
         <em class="hint">Ctrl + S</em>
         <span id="wa-editor-status" style="margin-left: 25px; display: none"></span>
-
     </div>
     {/if}
 {$wa->csrf()}
@@ -227,6 +218,25 @@
     </div>
 </div>
 
+<div class="dialog" id="s-switch-editor">
+    <div class="dialog-background"> </div>
+    <div class="dialog-window" style="height: 140px; min-height: 140px; width: 530px; min-width: 530px">
+        <form>
+            <div class="dialog-content">
+                <div class="dialog-content-indent">
+                    [`<b>WYSIWYG editor may change your HTML code.</b><br><br>It is necessary for correct text formatting. Smarty code may be broken and outdated HTML tags may be replaced with modern ones.<br><br>Are you sure to switch to WYSIWYG editor?`]
+                </div>
+            </div>
+            <div class="dialog-buttons">
+                <div class="dialog-buttons-gradient">
+                    <input type="submit" class="button green" value="[`Switch`]" />
+                    [`or`] <a href="#" class="inline-link cancel"><b><i>[`cancel`]</i></b></a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script type="text/javascript">$(function () { "use strict";
 
     var wa_url = window.wa_url = {$wa_url|json_encode};
@@ -253,7 +263,7 @@
                         location.href = prev.addClass('selected').find('a').attr('href');
                         li.remove();
                     } else {
-                        next = li.nextAll('.dr:first');
+                        var next = li.nextAll('.dr:first');
                         if (next.length > 0) {
                             location.href = next.addClass('selected').find('a').attr('href');
                             li.remove();
@@ -276,44 +286,12 @@
         }
     });
 
-    // Open template vars help
-    $("#wa-editor-help-link").click(function () {
-        if ($("#wa-editor-help").is(":visible")) {
-            $("#wa-editor-help").hide();
-            return false;
-        }
-        $("#wa-editor-help").load('?module=pages&action=help', "app={$wa->app()}&id={if $page}{$page.id}{/if}", function () {
-            $(this).show();
-            var f = function (e) {
-                if ($(e.target).attr('id') == 'wa-editor-help' || $(e.target).parents('#wa-editor-help').length) {
-                    $(document).one('click', f);
-                } else {
-                    $("#wa-editor-help").hide();
-                }
-            };
-            $(document).one('click', f);
-        });
-        return false;
-    });
-
-    // Insert template var into test when user clicks a row in vars help
-    $("#wa-editor-help").on('click', "div.fields a.inline-link", function () {
-        var el = $(this).find('i');
-        if (el.children('b').length) {
-            el = el.children('b');
-        }
-        $.wa_editor_ready.then(function(method) {
-            $('#wa-page-content')[method]('insert', el.text());
-        });
-        return false;
-    });
-
     // Initialize editor when JS is loaded
     $.wa_editor_ready.then(function(method) {
         $('#wa-page-content')[method]({
             lang: $.Redactor.opts.langs["{$lang}"] ? "{$lang}" : 'en',
             smarty_wysiwyg_msg: {_ws('WYSIWYG editor is disabled because page source contains Smarty code tags.')|json_encode},
-            modification_wysiwyg_msg: {_ws('WYSIWYG editor may change your HTML code. It is necessary for correct text formatting. Smarty code may be broken and outdated HTML tags may be replaced with modern ones. Are you sure to switch to WYSIWYG editor?')|json_encode},
+            modification_wysiwyg_msg: $('#s-switch-editor'),
             saveButton: '#wa-page-button',
             upload_img_dialog: '#s-upload-dialog',
             uploadFields: {

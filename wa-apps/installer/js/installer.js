@@ -77,6 +77,7 @@ String.prototype.translate = function () {
 (function ($) {
     $.installer = {
         options: {
+            cache_url: '?module=settings&action=clearCache',
             redirect_url: null,
             redirect_timeout: 3000, /*ms*/
             updateStateInterval: 2000, /* ms */
@@ -292,7 +293,7 @@ String.prototype.translate = function () {
                 for (var id in data.sources) {
                     if (data.sources.hasOwnProperty(id)) {
                         subject = this.helper.subject(data.sources[id].target);
-                        if (subject != 'generic') {
+                        if (subject !== 'generic') {
                             if (!complete_result[subject]) {
                                 complete_result[subject] = {
                                     success: 0,
@@ -370,19 +371,19 @@ String.prototype.translate = function () {
                     var interval = data.current_state ? Math.abs(this.offset - (date.getTime() / 1000 - parseInt(data.current_state.timestamp))) : null;
                     var state_is_actual = data.current_state && (interval < 15);
                     if (state_is_actual) {
-                        if (data.current_state.stage_status == 'error') {
+                        if (data.current_state.stage_status === 'error') {
                             draw = true;
-                        } else if ((data.current_state.stage_status == 'complete') && (data.current_state.stage_name == 'update')) {
+                        } else if ((data.current_state.stage_status === 'complete') && (data.current_state.stage_name === 'update')) {
                             draw = true;
                         }
                     }
                     if (draw) {
-                        this.drawStateInfo(data.state, (data.current_state.stage_status == 'error') ? 'no' : 'yes');
+                        this.drawStateInfo(data.state, (data.current_state.stage_status === 'error') ? 'no' : 'yes');
                         $.tmpl('application-update-result', {
                             current_state: data.current_state,
                             result: null
                         }).appendTo('#update-raw');
-                    } else if (state_is_actual && data.state && (data.current_state.stage_status != 'none')) {
+                    } else if (state_is_actual && data.state && (data.current_state.stage_status !== 'none')) {
                         this.drawStateInfo(data.state);
 
                         this.timeout.state = setTimeout(function () {
@@ -486,6 +487,7 @@ String.prototype.translate = function () {
 
         redirectOnComplete: function () {
             /* @todo verify that there no fails */
+            this.clearCache();
             if (this.options.redirect_url) {
                 var self = this;
                 setTimeout(function () {
@@ -586,12 +588,12 @@ String.prototype.translate = function () {
                 success: function (data, textStatus) {
                     try {
                         try {
-                            if (typeof(data) != 'object') {
+                            if (typeof(data) !== 'object') {
                                 data = $.parseJSON(data);
                             }
                         } catch (e) {
                             console.error('Invalid server JSON response', e);
-                            if (typeof(error_handler) == 'function') {
+                            if (typeof(error_handler) === 'function') {
                                 error_handler();
                             }
                             throw e;
@@ -600,32 +602,32 @@ String.prototype.translate = function () {
                             switch (data.status) {
                                 case 'fail' :
                                     self.displayMessage(data.errors.error || data.errors, 'error');
-                                    if (typeof(error_handler) == 'function') {
+                                    if (typeof(error_handler) === 'function') {
                                         error_handler(data);
                                     }
                                     break;
                                 case 'ok' :
-                                    if (typeof(success_handler) == 'function') {
+                                    if (typeof(success_handler) === 'function') {
                                         success_handler(data.data);
                                     }
                                     break;
                                 default :
                                     console.error('unknown status response', data.status);
-                                    if (typeof(error_handler) == 'function') {
+                                    if (typeof(error_handler) === 'function') {
                                         error_handler(data);
                                     }
                                     break;
                             }
                         } else {
                             console.error('empty response', textStatus);
-                            if (typeof(error_handler) == 'function') {
+                            if (typeof(error_handler) === 'function') {
                                 error_handler();
                             }
                             self.displayMessage('Empty server response', 'warning');
                         }
                     } catch (e) {
                         console.error('Error handling server response ', e);
-                        if (typeof(error_handler) == 'function') {
+                        if (typeof(error_handler) === 'function') {
                             error_handler(data);
                         }
                         self.displayMessage('Invalid server response' + '<br>' + e.description, 'error');
@@ -634,7 +636,7 @@ String.prototype.translate = function () {
                 },
                 error: function (XMLHttpRequest, textStatus, errorThrown) {
                     console.error('AJAX request error', [textStatus, errorThrown]);
-                    if (typeof(error_handler) == 'function') {
+                    if (typeof(error_handler) === 'function') {
                         error_handler();
                     }
                     self.displayMessage('AJAX request error', 'warning');
@@ -643,6 +645,29 @@ String.prototype.translate = function () {
             });
         },
         displayMessage: function (message, type) {
+
+        },
+
+        clearCache: function () {
+            if (this.options.cache_url) {
+                $.ajax({
+                    url: this.options.cache_url,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: this.responseHandler
+                });
+            }
+        },
+        responseHandler: function (data) {
+            var self = $.installer;
+            try {
+                if (data.status !== 'ok') {
+                    setTimeout(function () {
+                        self.clearCache()
+                    }, 3000);
+                }
+            } catch (e) {
+            }
 
         }
     }

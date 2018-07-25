@@ -29,13 +29,9 @@ class installerPluginsViewAction extends installerItemsAction
     public function execute()
     {
         parent::execute();
-        $return_url = waRequest::get('return_url', waRequest::server('HTTP_REFERER'));
-        $return_hash = preg_replace('@^#@', '', waRequest::get('return_hash'));
-        if ($return_hash) {
-            $return_url .= '#'.$return_hash;
-        }
+
         $this->view->assign('top', !!preg_match('@^[^/]+$@', waRequest::get('slug')) && !waRequest::get('filter'));
-        $this->view->assign('return_url', $return_url);
+        $this->view->assign('return_url', $this->getReturnUrl());
         $this->view->assign('identity_hash', installerHelper::getHash());
         $this->view->assign('promo_id', installerHelper::getPromoId());
         $this->view->assign('domain', installerHelper::getDomain());

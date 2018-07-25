@@ -86,24 +86,20 @@ class installerAppsRemoveAction extends waViewAction
 
         $paths = array();
 
-        /**
-         * @var waAppConfig
-         */
-
+        /** @var waAppConfig */
         $system = wa($app_id);
         $system->setActive($app_id);
         $app = SystemConfig::getAppConfig($app_id);
         $info = $app->getInfo();
         $name = _wd($app_id, $info['name']);
-        /**
-         * @var waAppConfig $config ;
-         */
+        /** @var waAppConfig $config */
         $config = $system->getConfig();
 
         if (!empty($info['plugins'])) {
             $plugins = $config->getPlugins();
             foreach ($plugins as $plugin => $enabled) {
                 try {
+                    $system->setActive($app_id);
                     if ($enabled && ($plugin_instance = $system->getPlugin($plugin))) {
                         $plugin_instance->uninstall();
                     }
@@ -118,11 +114,30 @@ class installerAppsRemoveAction extends waViewAction
                     waFiles::delete(array_shift($paths), true);
                 }
                 $paths = array();
+
+                $params = array(
+                    'type' => 'plugins',
+                    'id'   => sprintf('%s/%s', $app_id, $plugin),
+                    'ip'   => waRequest::getIp(),
+                );
+
+                $system->setActive('installer');
+                $this->logAction('item_uninstall', $params);
             }
         }
 
         $config->uninstall();
         $this->cleanupApp($app_id);
+
+        $system->setActive('installer');
+
+        $params = array(
+            'type' => 'apps',
+            'id'   => $app_id,
+            'ip'   => waRequest::getIp(),
+        );
+
+        $this->logAction('item_uninstall', $params);
         return $name;
     }
 

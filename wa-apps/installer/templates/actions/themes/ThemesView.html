@@ -10,7 +10,7 @@
         {foreach $themes as $theme}
             {if $theme.path}
             <li>
-                <a href="#/themes/{$theme.id}" class="js-theme-info">
+                <a href="{$design_url}theme={$theme.id|escape}&action=theme" data-theme-id="{$theme.id|escape}" class="js-theme-info">
                     <div class="wa-theme-cover">
                         {if !empty($theme.cover)}
                             <img src="{$theme.cover}" />
@@ -47,12 +47,13 @@
                                     <div class="dialog-content">
                                         <div class="dialog-content-indent">
                                             <h1 id="wa-dialog-title">{$theme.name|escape}</h1>
-                                            {capture name="format"}[`Theme %s is now in use on`]{/capture}
                                             {sprintf($used_format,$theme.name)|escape}
                                             <ul class="menu-v">
                                             {foreach $theme.used as $url}
                                                 {if !$url.met}
-                                                    <li><a href="{$url.preview}" class="inline" target="_blank">{$url.preview|truncate:50:'...':false:true}</a><i class="icon10 new-window"></i></li>
+                                                    <li><a href="{$url.preview}" class="inline" target="_blank">{$url.preview|truncate:50:'...':false:true}</a><i class="icon10 new-window"></i>
+                                                    </li>
+                                                    <li><a href="{$design_url}theme={$theme.id|escape}&domain={$url.domain|escape}&route={$url.route|escape}" class="inline-link" title="[`Proceed to theme settings →`]"><i class="icon10 settings"></i>[`Proceed to theme settings →`]</a></li>
                                                 {/if}
                                             {/foreach}
                                             </ul>
@@ -87,7 +88,7 @@
         {foreach $themes as $theme}
             {if !$theme.path}
             <li>
-                <a href="#/themes/{$theme.id}" class="js-theme-info">
+                <a href="{$wa_backend_url}installer/#/themes/{$theme.id|escape}/" data-theme-id="{$theme.id|escape}" class="js-theme-info">
                     <div class="wa-theme-cover">
                         {if !empty($theme.cover)}
                             <img src="{$theme.cover}" />
@@ -150,7 +151,7 @@
 $("div.wa-themes ul li").on('click', 'a.js-theme-info', function () {
     try {
         var li = $(this).closest('li');
-        var theme_id = $(this).attr('href').replace(/^#\/themes\//,'');
+        var theme_id = $(this).data('theme-id')||$(this).attr('href').replace(/^#\/themes\//,'');
         var dialog = $('#wa-theme-use-dialog-' + theme_id);
         var install = $('#js-theme-install-' + theme_id);
         var buy = $('#js-theme-buy-' + theme_id);

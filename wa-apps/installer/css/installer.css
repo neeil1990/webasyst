@@ -453,3 +453,7 @@ table.zebra.i-updates .js-changelog { margin-top: 10px; font-size: 0.9em; }
 
 
 .not-implemented.not-implemented.not-implemented.not-implemented.not-implemented.not-implemented.not-implemented{border:1px dashed #ffa500;box-sizing:border-box}
+
+.c-dkim-settings .name {
+    margin-top: -0.45em;
+}

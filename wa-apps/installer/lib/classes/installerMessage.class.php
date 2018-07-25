@@ -26,6 +26,9 @@ class installerMessage
      */
     public static function getInstance()
     {
+        if (waConfig::get('is_template')) {
+            throw new waException('installerMessage::getInstance() is not allowed in template context');
+        }
         if (!self::$instance) {
             self::$instance = new self();
         }

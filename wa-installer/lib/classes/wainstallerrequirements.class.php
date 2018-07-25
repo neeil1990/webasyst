@@ -412,6 +412,19 @@ class waInstallerRequirements
         }
     }
 
+    private function testCloud($subject, &$requirement)
+    {
+        $requirement['passed'] = empty($requirement['strict']);
+
+        $target = $requirement['passed'] ? 'note' : 'warning';
+        $requirement[$target] = ifset($requirement['name'], $subject);
+        if (!empty($requirement['description'])) {
+            $requirement[$target] .= sprintf(': %s', $requirement['description']);
+        }
+
+        return $requirement['passed'];
+    }
+
     private function getRelation(&$version, $strict = false)
     {
         $relation = $strict ? false : '>=';
