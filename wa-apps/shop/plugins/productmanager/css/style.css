@@ -1,0 +1,42 @@
+.nb-manager-block{
+    display: block;
+    margin: 20px auto;
+    padding: 15px;
+    border:1px solid #ddd;
+    border-radius: 4px;
+}
+.nb-manager-block:after{
+    display: block;
+    content: "";
+    clear: both;
+}
+
+.nb-manager-block .nb-left{
+    width: 20%;
+    float: left;
+    margin-right: 5%;
+}
+
+.nb-manager-block .nb-body{
+    width: 75%;
+    float: left;
+}
+
+.nb-manager-block .nb-body h2,
+.nb-manager-block .nb-body p
+{
+    margin: 0 auto;
+}
+
+.nb-manager-block .nb-left img{
+    width: 100%;
+    margin-right: 20px;
+}
+
+.nb-small{
+    display: block;
+    font-size: 12px;
+    color: #aaaaaa;
+    font-weight: 400;
+    margin-bottom: 5px;
+}

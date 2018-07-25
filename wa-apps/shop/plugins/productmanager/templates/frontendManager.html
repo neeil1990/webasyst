@@ -1,0 +1,29 @@
+<div class="nb-manager-block">
+
+    <div class="nb-left">
+        <img src="{$user.photo}" alt="{$user.name}">
+    </div>
+
+    <div class="nb-body">
+        <h2>[`Manager`] {$user.name}</h2>
+        <span class="nb-small">[`Free entry`]</span>
+        <p>
+            {if $user.email}
+                [`Post`]: {', '|implode:$user.email}
+            {/if}
+            <br>
+            {if $user.email}
+                [`Phone`]: {', '|implode:$user.phone}
+            {/if}
+        </p>
+    </div>
+
+</div>
+
+
+
+
+
+
+
+

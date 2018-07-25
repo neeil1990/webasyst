@@ -1,0 +1,49 @@
+<style>
+    #wa .CodeMirror{
+        border: 1px solid #ccc;
+        padding: 2px;
+    }
+    .CodeMirror-scroll {
+        height: auto;
+        overflow-y: hidden;
+        overflow-x: auto;
+    }
+</style>
+<h1>[`Product manager`]</h1>
+<div class="fields form">
+    <form action="?module=plugins&id=productmanager&action=save" method="post" id="plugins-settings-form">
+        {$wa->csrf()}
+
+        <div class="field">
+            <div class="name">[`Output Template in the Storefront`]<br><span class="hint">HTML + Smarty</span></div>
+            <div class="value no-shift">
+                <div class="s-editor-core-wrapper">
+                    <textarea class="template-code" name="shop_productmanager[template]">{$template}</textarea>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="field">
+            <div class="value submit">
+                <input type="submit" class="button green" value="[`Save`]">
+
+                <span id="plugins-settings-form-status" style="display:none">
+                    <i style="vertical-align:middle" class="icon16 yes"></i> [`Save`]
+                </span>
+            </div>
+        </div>
+    </form>
+</div>
+<script type="text/javascript">
+    $(function () {
+        $("textarea.template-code").each(function () {
+            CodeMirror.fromTextArea(this, {
+                mode: "text/html",
+                tabMode: "indent",
+                height: "dynamic",
+                lineWrapping: true
+            });
+        });
+    });
+</script>
