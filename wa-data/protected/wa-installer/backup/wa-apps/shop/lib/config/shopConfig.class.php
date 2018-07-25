@@ -20,17 +20,17 @@ class shopConfig extends waAppConfig
                 $url = 'https://'.waRequest::server('HTTP_HOST').wa()->getConfig()->getCurrentUrl();
                 wa()->getResponse()->redirect($url, 301);
             }
-        } elseif ($module == 'order' || $module == 'orders') {
+        } elseif ($module == 'order' || $module == 'orders' || $module == 'coupons' || $module == 'workflow') {
             return wa()->getUser()->getRights('shop', 'orders');
         } elseif (substr($module, 0, 7) == 'reports') {
             return wa()->getUser()->getRights('shop', 'reports');
-        } elseif ($module == 'settings') {
+        } elseif (substr($module, 0, 8) == 'settings') {
             return wa()->getUser()->getRights('shop', 'settings');
-        } elseif ($module == 'services') {
+        } elseif (substr($module, 0, 7) == 'service') {
             return wa()->getUser()->getRights('shop', 'services');
         } elseif ($module == 'customers') {
             return wa()->getUser()->getRights('shop', 'customers');
-        } elseif ($module == 'importexport') {
+        } elseif ($module == 'importexport' || $module == 'csv' || $module == 'images') {
             return wa()->getUser()->getRights('shop', 'importexport');
         } elseif ($module == 'promos') {
             return wa()->getUser()->getRights('shop', 'setscategories');
@@ -120,19 +120,12 @@ class shopConfig extends waAppConfig
             foreach ($result as $plugin_id => $routing_rules) {
                 if ($routing_rules) {
                     $plugin = str_replace('-plugin', '', $plugin_id);
-                    /*
-                     if ($url_type == 0) {
-                     $routing_rules = $routing_rules[0];
-                     } else {
-                     $routing_rules = $routing_rules[1];
-                     }
-                     */
                     foreach ($routing_rules as $url => & $route) {
                         if (!is_array($route)) {
                             list($route_ar['module'], $route_ar['action']) = explode('/', $route);
                             $route = $route_ar;
                         }
-                        if (!array_key_exists('plugin', $route)) {
+                        if ($plugin !== $plugin_id && !array_key_exists('plugin', $route)) {
                             $route['plugin'] = $plugin;
                         }
                         $all_plugins_routes[$url] = $route;
@@ -217,7 +210,9 @@ class shopConfig extends waAppConfig
                          'map'                   => 'google',
                          'gravatar_default'      => 'custom',
                          'require_captcha'       => 1, // is captcha is required for add reviews
-                         'require_authorization' => 0 // is authorization is required for add reviews
+                         'require_authorization' => 0, // is authorization is required for add reviews
+                         'review_service_agreement'      => '',
+                         'review_service_agreement_hint' => '',
                      ) as $k => $value) {
                 $settings[$k] = isset($all_settings[$k]) ? $all_settings[$k] : $value;
             }
@@ -392,16 +387,17 @@ class shopConfig extends waAppConfig
         }
         $plugin_model = new shopPluginModel();
         if (!$plugin_model->countByField('type', 'shipping') && isset($steps['shipping'])) {
-            unset($steps['shipping']);
+            unset($steps[shopCheckout::STEP_SHIPPING]);
         }
         if (!$plugin_model->countByField('type', 'payment') && isset($steps['payment'])) {
-            unset($steps['payment']);
+            unset($steps[shopCheckout::STEP_PAYMENT]);
         }
         reset($steps);
         return $steps;
     }
 
-    public function getSaveQuality($for2x = false) {
+    public function getSaveQuality($for2x = false)
+    {
         $quality = $this->getOption('image_save_quality'.($for2x ? '_2x' : ''));
         if (!$quality) {
             $quality = $for2x ? 70 : 90;
@@ -411,11 +407,14 @@ class shopConfig extends waAppConfig
 
     public function getRoundingOptions()
     {
-        $result = wa('shop')->getConfig()->getOption('rounding_options');
-        foreach($result as &$label) {
-            $label = _w($label);
+        static $result = null;
+        if ($result === null) {
+            $result = wa('shop')->getConfig()->getOption('rounding_options');
+            foreach ($result as &$label) {
+                $label = _w($label);
+            }
+            unset($label);
         }
-        unset($label);
         return $result;
     }
 
@@ -502,6 +501,11 @@ function shop_currency($n, $in_currency = null, $out_currency = null, $format = 
             $n = $n / ifempty($currencies[$out_currency]['rate'], 1.0);
         }
     }
+
+    if (($format !== null) && ($info = waCurrency::getInfo($out_currency)) && isset($info['precision'])) {
+        $n = round($n, $info['precision']);
+    }
+
     if ($format === 'h') {
         return wa_currency_html($n, $out_currency);
     } elseif ($format) {

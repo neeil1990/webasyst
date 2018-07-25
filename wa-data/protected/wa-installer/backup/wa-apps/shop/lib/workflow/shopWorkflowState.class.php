@@ -8,6 +8,7 @@ class shopWorkflowState extends waWorkflowState
     protected $style_html;
     protected $frontend_style_html;
     protected $available_actions = array();
+    public $original = false;
 
     /**
      * @param string $id id as stored in database
@@ -27,31 +28,31 @@ class shopWorkflowState extends waWorkflowState
 
     /**
      * @param array $params array with order data
+     * @param bool $name_only
      * @return array
      */
-    public function getActions($params = null)
+    public function getActions($params = null, $name_only = false)
     {
-        $actions = parent::getActions($params);
-        //add internal actions: merge
+        $actions = parent::getActions($params, false);
+
+        // add internal actions related to merging unsettled orders
         if (!empty($params['unsettled'])) {
-            $args = func_get_args();
-            $name_only = isset($args[1]) ? $args[1] : false;
-            $action_id = 'settle';
-            if ($action = $this->workflow->getActionById($action_id)) {
-                if (!$name_only) {
-                    $actions[$action->getId()] = $action;
-                } else {
-                    $actions[$action->getId()] = $action->getName();
-                }
+            if (($action = $this->workflow->getActionById('settle'))) {
+                $actions[$action->getId()] = $action;
             }
         }
+
+        // Filter out unavailable actions
         foreach ($actions as $a_id => $a) {
             if ($a instanceof shopWorkflowAction) {
                 if (!$a->isAvailable($params)) {
                     unset($actions[$a_id]);
+                } elseif ($name_only) {
+                    $actions[$a_id] = $a->getName();
                 }
             }
         }
+
         return $actions;
     }
 

@@ -16,7 +16,9 @@ class shopOrderParamsModel extends waModel
         }
         $params = array();
         $payment = $shipping = array();
-        $plugin_model = new shopPluginModel();
+        if ($full) {
+            $plugin_model = new shopPluginModel();
+        }
         foreach ($this->getByField('order_id', $ids, true) as $p) {
             $params[$p['order_id']][$p['name']] = $p['value'];
             if ($full) {
@@ -163,6 +165,41 @@ class shopOrderParamsModel extends waModel
         return $this->query(
                 "SELECT DISTINCT value FROM `{$this->table}` WHERE name = 'utm_campaign'")
                 ->fetchAll(null, true);
+    }
+
+    public function isReduced($order_id)
+    {
+        return (bool) $this->getOne($order_id, 'reduced');
+    }
+
+    public function setReduced($order_id)
+    {
+        $this->setOne($order_id, 'reduced', 1);
+    }
+
+    public function unsetReduced($order_id)
+    {
+        $this->setOne($order_id, 'reduced', 0);
+    }
+
+    public function getReduceTimes($order_id)
+    {
+        return (int) $this->getOne($order_id, 'reduce_times');
+    }
+
+    public function getReturnTimes($order_id)
+    {
+        return (int) $this->getOne($order_id, 'return_times');
+    }
+
+    public function incReduceTimes($order_id)
+    {
+        $this->setOne($order_id, 'reduce_times', $this->getReduceTimes($order_id) + 1);
+    }
+
+    public function incReturnTimes($order_id)
+    {
+        $this->setOne($order_id, 'return_times', $this->getReturnTimes($order_id) + 1);
     }
 
 }

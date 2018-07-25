@@ -2,16 +2,16 @@
 
 class shopWorkflowRestoreAction extends shopWorkflowAction
 {
-    public function execute($oder_id = null)
+    public function execute($order_id = null)
     {
         // Restore previous state
-        $log_model = new shopOrderLogModel();
         $params = array();
-        $this->state_id = $log_model->getPreviousState($oder_id, $params);
-
+        $this->state_id = $this->order_log_model->getPreviousState($order_id, $params);
+        shopAffiliate::reapplyDiscount($order_id);
         // Restore order.paid_*, customer.total_spent and customer.affiliation_bonus
         $paid_date = ifset($params['paid_date']);
         if ($paid_date) {
+
             $t = strtotime($paid_date);
             $result['update'] = array(
                     'paid_year' => date('Y', $t),
@@ -31,11 +31,7 @@ class shopWorkflowRestoreAction extends shopWorkflowAction
 
         if ($order_id != null) {
 
-            $log_model = new waLogModel();
-            $log_model->add('order_restore', $order_id);
-
-            $order_model = new shopOrderModel();
-            $app_settings_model = new waAppSettingsModel();
+            $this->waLog('order_restore', $order_id);
 
             if ($this->state_id != 'refunded') {
 
@@ -47,23 +43,25 @@ class shopWorkflowRestoreAction extends shopWorkflowAction
                         'order_id' => $order_id
                     )
                 );
-                
-                $update_on_create = $app_settings_model->get('shop', 'update_stock_count_on_create_order');
-                if ($update_on_create) {
-                    $order_model->reduceProductsFromStocks($order_id);
-                } elseif (!$update_on_create && $this->state_id != 'new') {
-                    $order_model->reduceProductsFromStocks($order_id);
+
+                // Check was reducing in past?
+                // If yes, it means that order has been deleted (and stock returned)
+                // and so it's needed to reduce again
+                if ($this->order_params_model->getReduceTimes($order_id) > 0) {
+                    $this->order_model->reduceProductsFromStocks($order_id);
                 }
-                
+
                 shopProductStocksLogModel::clearContext();
                 
             }
 
-            $order = $order_model->getById($order_id);
+            $order = $this->order_model->getById($order_id);
             if ($order && $order['paid_date']) {
                 shopAffiliate::applyBonus($order_id);
                 shopCustomer::recalculateTotalSpent($order['contact_id']);
             }
+
+            $this->setPackageState(waShipping::STATE_DRAFT, $order_id, array('log' => true));
         }
         return $data;
     }

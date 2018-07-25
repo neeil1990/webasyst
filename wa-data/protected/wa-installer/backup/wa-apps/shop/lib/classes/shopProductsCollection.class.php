@@ -251,12 +251,15 @@ class shopProductsCollection
             $this->where[] = 'p.count <= 0';
         }
 
+        $price_filter = array();
+
         if (isset($data['price_min']) && $data['price_min'] !== '') {
             $this->where[] = 'p.max_price >= '.$this->toFloat(shop_currency($data['price_min'], true, $config->getCurrency(true), false));
+            $price_filter['price_min'] = ' >= '.$this->toFloat(shop_currency($data['price_min'], true, $config->getCurrency(true), false));
         }
         if (isset($data['price_max']) && $data['price_max'] !== '') {
             $this->where[] = 'p.min_price <= '.$this->toFloat(shop_currency($data['price_max'], true, $config->getCurrency(true), false));
-            unset($data['price_max']);
+            $price_filter['price_max'] = ' <='.$this->toFloat(shop_currency($data['price_max'], true, $config->getCurrency(true), false));
         }
         unset(
             $data['in_stock_only'],
@@ -269,9 +272,9 @@ class shopProductsCollection
         $features = $feature_model->getByField('code', array_keys($data), 'code');
 
         if ($features && $this->getModel('product')->existsSelectableProducts()) {
-            $skus_alias = $this->addJoin('shop_product_skus', ':table.product_id = p.id', ':table.available = 1');
+            $skus_alias = $this->addJoin('shop_product_skus', ':table.product_id = p.id', ':table.available > 0');
             if (waRequest::param('drop_out_of_stock') == 2) {
-                $this->addWhere('(' . $skus_alias . '.count IS NULL OR ' . $skus_alias . '.count > 0)');
+                $this->addWhere('('.$skus_alias.'.count IS NULL OR '.$skus_alias.'.count > 0)');
             }
         }
         $alias_index = 1;
@@ -310,17 +313,34 @@ class shopProductsCollection
                     }
                 }
                 if ($values) {
+                    $imploded_values = implode(',', $values);
+                    $feature_id = $features[$feature_code]['id'];
                     if (wa('shop')->getConfig()->getOption('filters_features') == 'exists') {
                         $t = 'tpf'.($alias_index++);
-                        $this->where[] = 'EXISTS (
-                        SELECT 1 FROM shop_product_features '.$t.' WHERE
-                            p.id = '.$t.'.product_id AND '.$t.'.feature_id = '.(int)$features[$feature_code]['id'].' AND
-                            '.$t.'.feature_value_id IN ('.implode(',', $values).')'.
-                            (!empty($skus_alias) ? ' AND ('.$t.'.sku_id IS NULL OR '.$t.'.sku_id = '.$skus_alias.'.id)' : '').'
-                        )';
+                        if (!empty($skus_alias)) {
+                            $sku_where = " AND ({$t}.sku_id IS NULL OR {$t}.sku_id = {$skus_alias}.id)";
+                        } else {
+                            $sku_where = '';
+                        }
+
+                        $this->where[] = <<<SQL
+EXISTS (
+  SELECT
+    1
+  FROM shop_product_features {$t}
+  WHERE
+    p.id = {$t}.product_id
+    AND
+    {$t}.feature_id = {$feature_id}
+    AND
+    {$t}.feature_value_id IN ({$imploded_values})
+    {$sku_where}
+)
+SQL;
+
                     } else {
-                        $on = 'p.id = :table.product_id AND :table.feature_id = '.(int)$features[$feature_code]['id'];
-                        $where = ':table.feature_value_id IN ('.implode(',', $values).')';
+                        $on = 'p.id = :table.product_id AND :table.feature_id = '.$feature_id;
+                        $where = ':table.feature_value_id IN ('.$imploded_values.')';
                         if (!empty($skus_alias)) {
                             $where .= ' AND (:table.sku_id IS NULL OR :table.sku_id = '.$skus_alias.'.id)';
                         }
@@ -328,6 +348,12 @@ class shopProductsCollection
                         $this->addJoin('shop_product_features', $on, $where);
                     }
                     $this->group_by = 'p.id';
+                    if (!empty($skus_alias) && !empty($price_filter)) {
+                        // #53.4890
+                        foreach ($price_filter as $price_filter_item) {
+                            $this->addWhere("({$skus_alias}.primary_price {$price_filter_item})");
+                        }
+                    }
                 } else {
                     $this->where[] = '0';
                 }
@@ -480,6 +506,9 @@ class shopProductsCollection
             if (!waRequest::get('sort') && !empty($set['rule'])) {
                 $this->order_by = $set['rule'];
             }
+            if (!empty($set['rule']) && ($set['rule'] == 'compare_price DESC')) {
+                $this->where[] = 'compare_price > price';
+            }
         }
     }
 
@@ -530,16 +559,13 @@ class shopProductsCollection
     protected function tagPrepare($id, $auto_title = true)
     {
         $tag_model = new shopTagModel();
-        $tag = false;
-        if (is_numeric($id)) {
+        $tag = $tag_model->getByName($id);
+        if ($tag) {
+            $id = $tag['id'];
+        } elseif (is_numeric($id)) {
             $tag = $tag_model->getById($id);
         }
-        if (!$tag) {
-            $tag = $tag_model->getByName($id);
-            if ($tag) {
-                $id = $tag['id'];
-            }
-        }
+
         if ($tag) {
             $this->addJoin('shop_product_tags', null, ':table.tag_id = '.(int)$id);
             if ($auto_title) {
@@ -692,7 +718,7 @@ class shopProductsCollection
                                 if ($sub_features) {
                                     $rows = $product_features_model->getByField(array(
                                         'product_id' => $product['id'],
-                                        'sku_id' => null,
+                                        'sku_id'     => null,
                                         'feature_id' => array_keys($sub_features)
                                     ), true);
                                 }
@@ -705,7 +731,7 @@ class shopProductsCollection
                         if ($values) {
                             foreach ($values as $f_id => $f_values) {
                                 $alias = $this->addJoin('shop_product_features');
-                                $this->where[] = $alias . ".feature_id = " . $f_id;
+                                $this->where[] = $alias.".feature_id = ".$f_id;
                                 if (count($f_values) == 1) {
                                     $this->where[] = $alias.".feature_value_id ".($row['cond'] == 'notsame' ? '!' : '')."= ".$f_values[0];
                                 } else {
@@ -814,7 +840,7 @@ class shopProductsCollection
                                 'table' => 'shop_search_index',
                                 'alias' => 'si'
                             );
-                            $this->where[] = 'si.word_id IN (' . implode(",", $word_ids) . ')';
+                            $this->where[] = 'si.word_id IN ('.implode(",", $word_ids).')';
                             if (count($word_ids) > 1) {
                                 $this->fields[] = "SUM(si.weight) AS weight";
                                 $this->fields[] = "COUNT(*) AS weight_count";
@@ -845,7 +871,7 @@ class shopProductsCollection
                                 $this->order_by = $auto_order_by;
                             }
                             $q = $model->escape($parts[2], 'like');
-                            $this->addJoin('shop_product_skus', null, "(p.name LIKE '%" . $q . "%' OR :table.name LIKE '%" . $q . "%' OR :table.sku LIKE '%" . $q . "%')");
+                            $this->addJoin('shop_product_skus', null, "(p.name LIKE '%".$q."%' OR :table.name LIKE '%".$q."%' OR :table.sku LIKE '%".$q."%')");
                             $this->group_by = 'p.id';
                             return;
                         } elseif ($word_ids) {
@@ -853,12 +879,12 @@ class shopProductsCollection
                             $p = array_shift($result);
                             $w = str_replace(',', '.', 0.3 * $p['weight']);
                             if (count($word_ids) > 1) {
-                                $this->having[] = 'SUM(si.weight) >= ' . $w;
+                                $this->having[] = 'SUM(si.weight) >= '.$w;
                                 if ($p['weight_count'] == count($word_ids)) {
-                                    $this->having[] = 'COUNT(*) >= ' . count($word_ids);
+                                    $this->having[] = 'COUNT(*) >= '.count($word_ids);
                                 }
                             } else {
-                                $this->where[] = 'weight >= ' . $w;
+                                $this->where[] = 'weight >= '.$w;
                             }
                             $this->count = null;
 
@@ -878,7 +904,8 @@ class shopProductsCollection
                         $tags = explode('||', $parts[2]);
                         $tag_ids = $tag_model->getIds($tags);
                     } else {
-                        $sql = "SELECT id FROM ".$tag_model->getTableName()." WHERE name".$this->getExpression($parts[1], $parts[2]);
+                        $sql = "SELECT id FROM ".$tag_model->getTableName();
+                        $sql .= " WHERE name".$this->getExpression($parts[1], $parts[2]);
                         $tag_ids = $tag_model->query($sql)->fetchAll(null, true);
                     }
                     if ($tag_ids) {
@@ -889,9 +916,9 @@ class shopProductsCollection
                 } elseif ($model->fieldExists($parts[0])) {
                     $title[] = $parts[0].$parts[1].$parts[2];
                     if ($parts[0] === 'count' && in_array($parts[1], array('>', '>='))) {
-                        $this->where[] = '(p.' . $parts[0] . $this->getExpression($parts[1], $parts[2]) . ' OR p.count IS NULL)';
+                        $this->where[] = '(p.'.$parts[0].$this->getExpression($parts[1], $parts[2]).' OR p.count IS NULL)';
                     } else {
-                        $this->where[] = 'p.' . $parts[0] . $this->getExpression($parts[1], $parts[2]);
+                        $this->where[] = 'p.'.$parts[0].$this->getExpression($parts[1], $parts[2]);
                     }
                 } elseif ($parts[1] == '=') {
                     $code = $parts[0];
@@ -979,6 +1006,10 @@ class shopProductsCollection
             $fields = array_map('trim', $fields);
         }
 
+        if (false !== strpos(join('', $fields), 'price')) {
+            $fields[] = 'currency'; // required for proper rounding and convertion
+        }
+
         $virtual_fields = array('images', 'images2x', 'image', 'sku', 'skus', 'frontend_url', 'image_count', 'sales_30days', 'image_crop_small', 'stock_worth', 'stock_counts');
         // Add required fields to select and delete fields for getting data after query
         foreach ($fields as $i => $f) {
@@ -1013,10 +1044,6 @@ class shopProductsCollection
             }
         }
 
-        if (waRequest::param('drop_out_of_stock') == 1) {
-            $fields[] = '(p.count > 0 || p.count IS NULL) AS in_stock';
-        }
-
         return implode(",", $fields);
     }
 
@@ -1028,7 +1055,12 @@ class shopProductsCollection
     protected function _getOrderBy()
     {
         if ($this->order_by) {
-            return " ORDER BY ".(waRequest::param('drop_out_of_stock') == 1 ? 'in_stock DESC,' : '').$this->order_by;
+            if (waRequest::param('drop_out_of_stock') == 1) {
+                $this->fields[] = '(p.count > 0 || p.count IS NULL) AS in_stock';
+                return " ORDER BY in_stock DESC,".$this->order_by;
+            } else {
+                return " ORDER BY ".$this->order_by;
+            }
         } else {
             return "";
         }
@@ -1213,7 +1245,6 @@ class shopProductsCollection
             $escape = $limit;
             $limit = null;
         }
-
         if ($limit === null) {
             if ($offset) {
                 $limit = $offset;
@@ -1222,11 +1253,9 @@ class shopProductsCollection
                 $limit = 50;
             }
         }
-
         if ($this->is_frontend && $fields == '*') {
             $fields .= ',frontend_url';
         }
-
         $split_fields = array_map('trim', explode(',', $fields));
         if (in_array('frontend_url', $split_fields) && !in_array('*', $split_fields)) {
             if ($dependent_fields = array_diff(array('url', 'category_id',), $split_fields)) {
@@ -1236,6 +1265,7 @@ class shopProductsCollection
 
         $sql = $this->getSQL();
 
+        // for dynamic set
         if ($this->hash[0] == 'set' && !empty($this->info['id']) && $this->info['type'] == shopSetModel::TYPE_DYNAMIC) {
             $this->count();
             if ($offset + $limit > $this->count) {
@@ -1243,13 +1273,13 @@ class shopProductsCollection
             }
         }
 
+        $order = $this->_getOrderBy();
         $sql = "SELECT ".($this->joins && !$this->group_by ? 'DISTINCT ' : '').$this->getFields($fields)." ".$sql;
-
         $sql .= $this->_getGroupBy();
         if ($this->having) {
             $sql .= " HAVING ".implode(' AND ', $this->having);
         }
-        $sql .= $this->_getOrderBy();
+        $sql .= $order;
         $sql .= " LIMIT ".($offset ? $offset.',' : '').(int)$limit;
 
         $data = $this->getModel()->query($sql)->fetchAll('id');
@@ -1258,6 +1288,119 @@ class shopProductsCollection
         }
         $this->workupProducts($data, $escape);
         return $data;
+    }
+
+    /**
+     * Sets $p['category_url'] for each product in list,
+     * based on its $p['category_id']
+     * @param mixed[] $products
+     */
+    protected function updateCategoryUrls(&$products)
+    {
+        /*
+         * We need to build a full frontend URL for each product,
+         * which for url_type=2 includes the category breadcrumbs.
+         * Each product has the main category_id that is used to build the URL.
+         *
+         * Sometimes the main category of a product is set up not to be visible
+         * in current frontend settlement. For such products we will build the URL
+         * as if the product has no main category set.
+         */
+
+        $cat_ids = array();
+        foreach ($products as &$p) {
+            if (!empty($p['category_id'])) {
+                $cat_ids[$p['category_id']] = $p['category_id'];
+            }
+        }
+        unset($p);
+        if (!$cat_ids) {
+            return;
+        }
+
+        // Figure out which categories are disabled for current settlement
+        $category_disabled = array();
+        $route = wa()->getRouting()->getDomain(null, true).'/'.wa()->getRouting()->getRoute('url');
+        $category_routes = $this->getModel('categoryRoutes')->getRoutes(array_values($cat_ids), false);
+        foreach ($category_routes as $category_id => $routes) {
+            if ($routes && !in_array($route, $routes)) {
+                $category_disabled[$category_id] = true;
+            }
+        }
+        unset($category_routes);
+
+        // Set empty main category for products when it's disabled.
+        // This generates a short URL for such products (i.e. no category breadcrumbs).
+        foreach ($products as &$p) {
+            if (!empty($p['category_id']) && !empty($category_disabled[$p['category_id']])) {
+                $p['category_id'] = null;
+            }
+        }
+        unset($p);
+
+        // For products with no main category (or main category disabled in current settlement),
+        // there's an experimental option to use URL from some other category the product is in.
+        // This can be DB-heavy, so it's disabled by default.
+        if (waRequest::param('correct_category_urls') || !empty($this->options['correct_category_urls'])) {
+            // Products that need replacement of main category
+            $product_ids = array();
+            foreach ($products as $p) {
+                if (empty($p['category_id'])) {
+                    $product_ids[] = $p['id'];
+                }
+            }
+
+            // Fetch info about which products are in which categories
+            $more_cat_ids = array();
+            $product_categories = array();
+            if ($product_ids) {
+                $rows = $this->getModel('categoryProducts')->getByField('product_id', $product_ids, true);
+                foreach ($rows as $row) {
+                    $product_categories[$row['product_id']][] = $row['category_id'];
+                    $more_cat_ids[$row['category_id']] = $row['category_id'];
+                }
+                unset($rows, $row, $product_ids);
+            }
+
+            // Fetch info about which categories are disabled in current storefront
+            $more_cat_ids = array_values(array_diff_key($more_cat_ids, $cat_ids));
+            if ($more_cat_ids) {
+                $category_routes = $this->getModel('categoryRoutes')->getRoutes($more_cat_ids, false);
+                foreach ($category_routes as $category_id => $routes) {
+                    if ($routes && !in_array($route, $routes)) {
+                        $category_disabled[$category_id] = true;
+                    }
+                }
+                unset($category_routes, $more_cat_ids);
+            }
+
+            // Update main categories of products, selecting any category
+            // that is enabled for current frontend settlement.
+            if ($product_categories) {
+                foreach ($product_categories as $p_id => $pcats) {
+                    foreach (ifempty($pcats, array()) as $category_id) {
+                        if (empty($category_disabled[$category_id])) {
+                            $cat_ids[$category_id] = $category_id;
+                            $products[$p_id]['category_id'] = $category_id;
+                            break;
+                        }
+                    }
+                }
+                unset($p);
+            }
+        }
+
+        // Update products data. For products with valid frontend category, set the full URL.
+        $cat_ids = array_values(array_diff_key($cat_ids, $category_disabled));
+        $categories = $this->getModel('category')->getById($cat_ids);
+        foreach ($products as &$p) {
+            if (!empty($p['category_id']) && !empty($categories[$p['category_id']]['full_url'])) {
+                $p['category_url'] = $categories[$p['category_id']]['full_url'];
+            } else {
+                $p['category_id'] = null;
+            }
+        }
+        unset($p);
     }
 
     private function workupProducts(&$products = array(), $escape = true)
@@ -1278,7 +1421,10 @@ class shopProductsCollection
             !empty($this->options['round_prices']) && shopRounding::roundProducts($products);
         }
         $rounding = array(
-            'price', 'min_price', 'max_price', 'compare_price'
+            'price',
+            'min_price',
+            'max_price',
+            'compare_price'
         );
 
         // Names of fields that must be converted to float values
@@ -1300,20 +1446,19 @@ class shopProductsCollection
                     $p[$field] = (float)$p[$field];
                 }
             }
-
             if (isset($p['total_sales'])) {
                 $p['total_sales_html'] = '';
                 if (!empty($p['total_sales'])) {
                     $p['total_sales_html'] = '<span class="nowrap">'.
                         shop_currency_html($p['total_sales'], $default_currency, $default_currency).
-                    '</span>';
+                        '</span>';
                 }
             }
 
             if (isset($p['rating'])) {
                 $p['rating_html'] = '<span class="rate nowrap" title="'.htmlspecialchars(sprintf_wp('Average user rating: %s / 5', $p['rating'])).'">'.
                     shopHelper::getRatingHtml($p['rating'], 10, true).
-                '</span>';
+                    '</span>';
             }
 
             // escape
@@ -1361,22 +1506,7 @@ class shopProductsCollection
 
         // Get 'category_url' for each product
         if ($this->is_frontend && waRequest::param('url_type') == 2) {
-            $cat_ids = array();
-            foreach ($products as &$p) {
-                if (!empty($p['category_id'])) {
-                    $cat_ids[] = $p['category_id'];
-                }
-            }
-            $cat_ids = array_unique($cat_ids);
-            if ($cat_ids) {
-                $categories = $this->getModel('category')->getById($cat_ids);
-                foreach ($products as &$p) {
-                    if (!empty($p['category_id'])) {
-                        $p['category_url'] = $categories[$p['category_id']]['full_url'];
-                    }
-                }
-                unset($p);
-            }
+            $this->updateCategoryUrls($products);
         }
 
         if ($this->post_fields) {
@@ -1414,6 +1544,8 @@ class shopProductsCollection
                         $sizes[$size] = $config->getImageSize($size);
                     }
 
+                    $absolute_image_url = !empty($this->options['absolute_image_url']);
+
                     foreach ($products as &$p) {
                         if ($p['image_id']) {
                             $tmp = array(
@@ -1423,7 +1555,7 @@ class shopProductsCollection
                                 'ext'        => $p['ext']
                             );
                             foreach ($sizes as $size_id => $size) {
-                                $p['image'][$size_id.'_url'] = shopImage::getUrl($tmp, $size, ifset($this->options['absolute'], false));
+                                $p['image'][$size_id.'_url'] = shopImage::getUrl($tmp, $size, ifset($this->options['absolute'], $absolute_image_url));
                             }
                         } else {
                             foreach ($sizes as $size_id => $size) {
@@ -1437,8 +1569,12 @@ class shopProductsCollection
                     $size = $config->getImageSize('crop_small');
                     foreach ($products as &$p) {
                         if ($p['image_id']) {
-                            $tmp = array('id' => $p['image_id'], 'product_id' => $p['id'],
-                                'filename' => $p['image_filename'], 'ext' => $p['ext']);
+                            $tmp = array(
+                                'id'         => $p['image_id'],
+                                'product_id' => $p['id'],
+                                'filename'   => $p['image_filename'],
+                                'ext'        => $p['ext']
+                            );
                             $p['image_crop_small'] = shopImage::getUrl($tmp, $size, isset($this->options['absolute']) ? $this->options['absolute'] : false);
                         }
                     }
@@ -1558,12 +1694,12 @@ class shopProductsCollection
                                 AND oi.type='product'
                                 AND o.paid_date >= ?
                             GROUP BY product_id";
-                    $sales = $this->getModel()->query($sql, array(array_keys($products), date('Y-m-d', time() - 3600*24*30)))->fetchAll('product_id', true);
+                    $sales = $this->getModel()->query($sql, array(array_keys($products), date('Y-m-d', time() - 3600 * 24 * 30)))->fetchAll('product_id', true);
                     foreach ($products as &$p) {
-                        $p['sales_30days'] = (float) ifset($sales[$p['id']], 0.0);
+                        $p['sales_30days'] = (float)ifset($sales[$p['id']], 0.0);
                         $p['sales_30days_html'] = empty($p['sales_30days']) ? '' : '<span class="nowrap">'.
                             shop_currency_html($p['sales_30days'], $default_currency, $default_currency).
-                        '</span>';
+                            '</span>';
                     }
                     unset($p);
                 }
@@ -1575,10 +1711,10 @@ class shopProductsCollection
                             GROUP BY s.product_id";
                     $stock_worth = $this->getModel()->query($sql, array(array_keys($products)))->fetchAll('product_id', true);
                     foreach ($products as &$p) {
-                        $p['stock_worth'] = (float) ifset($stock_worth[$p['id']], 0.0);
+                        $p['stock_worth'] = (float)ifset($stock_worth[$p['id']], 0.0);
                         $p['stock_worth_html'] = empty($p['stock_worth']) ? '' : '<span class="nowrap">'.
                             shop_currency_html($p['stock_worth'], $default_currency, $default_currency).
-                        '</span>';
+                            '</span>';
                     }
                     unset($p);
                 }
@@ -1648,7 +1784,7 @@ class shopProductsCollection
                             if (is_array($arr['value'])) {
                                 $arr['value_html'] = join(', ', $arr['value']);
                             } else {
-                                $arr['value_html'] = (string) $arr['value'];
+                                $arr['value_html'] = (string)$arr['value'];
                             }
                         }
                     }
@@ -1672,6 +1808,39 @@ class shopProductsCollection
         }
 
         if ($this->is_frontend) {
+
+            // When storefront is only limited to certain stock, recalculate product counts
+            $public_stocks = waRequest::param('public_stocks');
+            if (!empty($public_stocks)) {
+
+                // List of all stocks
+                $stock_model = new shopStockModel();
+                $stocks = $stock_model->getAll('id');
+
+                // For each product make a list of stock counts
+                // product_id => sku_id => stock_id => count
+                $stock_counts = array();
+                $spsm = new shopProductStocksModel();
+                $rows = $spsm->getByField(array(
+                    'product_id' => array_keys($products),
+                ), true);
+                foreach($rows as $row) {
+                    $stock_counts[$row['product_id']][$row['sku_id']][$row['stock_id']] = $row['count'];
+                }
+
+                // When there is no record in shopProductStocksModel for a sku_id+stock_id combination,
+                // but there is at least one record for this product_id it means infinite supply
+                // of this sku_id on this stock.
+                // We take these infinite counts into account by adding NULLs to $stock_counts.
+                $empty_stocks = array_fill_keys(array_keys($stocks), null);
+                foreach($stock_counts as &$p) {
+                    foreach($p as &$s) {
+                        $s += $empty_stocks;
+                    }
+                }
+                unset($p, $s);
+            }
+
             foreach ($products as $p_id => $p) {
                 if (isset($p['price'])) {
                     $products[$p_id]['original_price'] = $p['price'];
@@ -1679,7 +1848,14 @@ class shopProductsCollection
                 if (isset($p['compare_price'])) {
                     $products[$p_id]['original_compare_price'] = $p['compare_price'];
                 }
+
+                // For each product calculate counts with respect to $public_stocks visible in current storefront.
+                if (!empty($public_stocks)) {
+                    //$products[$p_id]['count_by_stock'] = ifempty($stock_counts[$p_id]); // debugging helper
+                    $products[$p_id]['count'] = $this->countOfSelectedStocks($public_stocks, ifempty($stock_counts[$p_id]));
+                }
             }
+
             $event_params = array(
                 'products' => &$products
             );
@@ -1688,13 +1864,37 @@ class shopProductsCollection
     }
 
     /**
+     * Count product supply taking into account stocks visible in current storefront.
+     * @param $public_stocks
+     * @param $product_stock_counts
+     * @return int|null
+     */
+    protected function countOfSelectedStocks($public_stocks, $product_stock_counts)
+    {
+        $count = null;
+        if ($product_stock_counts) {
+            foreach ($product_stock_counts as $sku_id => $stocks) {
+                foreach($stocks as $stock_id => $c) {
+                    if (in_array($stock_id, $public_stocks)) {
+                        if ($c === null) {
+                            return null;
+                        }
+                        $count += $c;
+                    }
+                }
+            }
+        }
+        return $count;
+    }
+
+    /**
      * @param string $name
-     * @return shopProductModel
+     * @return shopProductModel|shopCategoryModel|shopTagModel|shopSetModel|shopFeatureModel|shopCategoryRoutesModel|shopCategoryProductsModel
      */
     protected function getModel($name = 'product')
     {
         if (!isset($this->models[$name])) {
-            if (in_array($name, array('product', 'category', 'tag', 'set', 'feature'))) {
+            if (in_array($name, array('product', 'category', 'tag', 'set', 'feature', 'categoryRoutes', 'categoryProducts'))) {
                 $class_name = 'shop'.ucfirst($name).'Model';
                 $this->models[$name] = new $class_name();
             }
@@ -1840,6 +2040,7 @@ class shopProductsCollection
     /**
      * Returns value ids of product's features
      *
+     * @param boolean $filtered
      * @return array
      * array(
      *     feature1_id => array(feature1_value1_id, feature1_value2_id, ...),
@@ -1847,9 +2048,27 @@ class shopProductsCollection
      *     ...
      * )
      */
-    public function getFeatureValueIds()
+    public function getFeatureValueIds($filtered = true)
     {
+        if (!$filtered) {
+            unset($this->options['filters']);
+            if ($this->filtered) {
+                $this->fields = array();
+                $this->where = null;
+                $this->having = array();
+                $this->count = null;
+                $this->order_by = 'p.create_datetime DESC';
+                $this->group_by = null;
+                $this->joins = null;
+                $this->join_index = array();
+
+                $this->post_fields = array();
+                $this->prepared = false;
+            }
+        }
+
         $this->prepare();
+
         // add join
         $alias = $this->addJoin('shop_product_features');
         $sql = $this->getSQL();

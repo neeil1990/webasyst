@@ -10,6 +10,9 @@ class shopOrderLogModel extends waModel
         if (!isset($data['contact_id'])) {
             $data['contact_id'] = wa()->getUser()->getId();
         }
+        if (isset($data['id'])) {
+            unset($data['id']);
+        }
         $log_id = $this->insert($data);
         if (!empty($data['params'])) {
             $params_model = new shopOrderLogParamsModel();
@@ -18,9 +21,9 @@ class shopOrderLogModel extends waModel
             foreach ($data['params'] as $name => $value) {
                 $params[] = array(
                     'order_id' => $order_id,
-                    'log_id' => $log_id,
-                    'name' => $name,
-                    'value' => $value
+                    'log_id'   => $log_id,
+                    'name'     => $name,
+                    'value'    => $value,
                 );
             }
             $params_model->multipleInsert($params);
@@ -39,17 +42,28 @@ class shopOrderLogModel extends waModel
                 LEFT JOIN wa_contact c ON l.contact_id = c.id
                 WHERE l.order_id = i:order_id
                 ORDER BY id DESC";
-        $data = $this->query($sql, array('order_id' => $order_id))->fetchAll();
+        $data = $this->query($sql, array('order_id' => $order_id))->fetchAll('id');
         foreach ($data as &$row) {
             $contact = array(
-                'firstname' => $row['contact_firstname'],
+                'firstname'  => $row['contact_firstname'],
                 'middlename' => $row['contact_middlename'],
-                'lastname' => $row['contact_lastname']
+                'lastname'   => $row['contact_lastname'],
             );
             $row['contact_name'] = waContactNameField::formatName($contact);
+            $row['params'] = array();
         }
         unset($row);
-        return $data;
+
+        $log_params_model = new shopOrderLogParamsModel();
+        $params = $log_params_model->getByField('order_id', $order_id, true);
+        foreach ($params as $p) {
+            if (!isset($data[$p['log_id']])) {
+                continue;
+            }
+            $data[$p['log_id']]['params'][$p['name']] = $p['value'];
+        }
+
+        return array_values($data);
     }
 
     public function getPreviousState($order_id, &$params = null)

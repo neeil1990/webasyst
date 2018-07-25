@@ -109,50 +109,53 @@ $.extend($.settings || {}, {
                 return false;
             }
 
-            // Render action settings form
-            var $template = $('.s-new-action');
-            $wrapper = $template.clone().show().appendTo($block)
-                .css('margin-left', 0)
-                .attr('data-id', action_id)
-                .removeClass('s-new-action')
-                .addClass('s-edit-action-block');
+            if(action_id !='message') {
 
-            // Update field names
-            $wrapper.find(':input').each(function() {
-                var item = $(this).attr('disabled', false);
-                var name = item.attr('name');
-                var match = name.match(/^(.*)\[(\d+)\]$/);
-                if (match) {
-                    item.attr('name', match[1].replace('new_action', 'edit_action') + '[' + action_id + ']');
-                    var type = match[1].replace('new_action_', '');
-                    if (item.is(':radio')) {
-                        item.attr('checked', item.val() == $block.data(type));
-                    } else {
-                        item.val($block.data(type));
+                // Render action settings form
+                var $template = $('.s-new-action');
+                $wrapper = $template.clone().show().appendTo($block)
+                    .css('margin-left', 0)
+                    .attr('data-id', action_id)
+                    .removeClass('s-new-action')
+                    .addClass('s-edit-action-block');
+
+                // Update field names
+                $wrapper.find(':input').each(function () {
+                    var item = $(this).attr('disabled', false);
+                    var name = item.attr('name');
+                    var match = name.match(/^(.*)\[(\d+)\]$/);
+                    if (match) {
+                        item.attr('name', match[1].replace('new_action', 'edit_action') + '[' + action_id + ']');
+                        var type = match[1].replace('new_action_', '');
+                        if (item.is(':radio')) {
+                            item.attr('checked', item.val() == $block.data(type));
+                        } else {
+                            item.val($block.data(type));
+                        }
                     }
-                }
-            });
+                });
 
-            // Replace id field with read-only text
-            var id_text = $block.find('[name="edit_action_id[' + action_id + ']"]').val();
-            $block.find('[name="edit_action_id[' + action_id + ']"]').replaceWith('<span>' +
+                // Replace id field with read-only text
+                var id_text = $block.find('[name="edit_action_id[' + action_id + ']"]').val();
+                $block.find('[name="edit_action_id[' + action_id + ']"]').replaceWith('<span>' +
                     id_text +
-                '<input type="hidden" name="edit_action_id[' + action_id + ']" value="' + id_text + '"></span>');
+                    '<input type="hidden" name="edit_action_id[' + action_id + ']" value="' + id_text + '"></span>');
 
-            // Link to delete custom action
-            $block.find('.s-delete-action').show().find('a').click(function() {
-                if (confirm($_('Order action will be deleted. Are you sure?'))) {
-                    $.post('?module=settings&action=orderActionDelete', {
-                        id: action_id
-                    }, function() {
-                        $.settings.redispatch();
-                    });
-                }
-                return false;
-            });
+                // Link to delete custom action
+                $block.find('.s-delete-action').show().find('a').click(function () {
+                    if (confirm($_('Order action will be deleted. Are you sure?'))) {
+                        $.post('?module=settings&action=orderActionDelete', {
+                            id: action_id
+                        }, function () {
+                            $.settings.redispatch();
+                        });
+                    }
+                    return false;
+                });
 
-            initColorPicker($block);
-            initActionIcons($block);
+                initColorPicker($block);
+                initActionIcons($block);
+            }
 
             return false;
         });
@@ -202,6 +205,9 @@ $.extend($.settings || {}, {
 
         // Initialize drag-and-drop of states in sidebar
         orderStatesSortableInit();
+
+        // Initialize sortable of available actions
+        orderActionsSortableInit();
 
         // Form submit handler
         var $form = $('#s-save-order-state');
@@ -289,6 +295,29 @@ $.extend($.settings || {}, {
             }
         }); // end of form submit handler
 
+        var changeListener = function (handler) {
+            var ns = '.shop-settings-order-states';
+            $('.s-settings-form')
+                .off(ns)
+                .on('change' + ns, '[name="action[]"]', handler)
+                .on('change' + ns, '.s-action-icon', handler)
+                .on('change' + ns, '[name^="new_action["]', handler)
+                .on('click' + ns, ':radio[name^="edit_action_link["]', handler)
+                .on('click' + ns, ':radio[name^="new_action_link["]', handler)
+            ;
+
+            $.shop.changeListener($('.s-settings-form'), '[name^="edit_action_border_color["]', handler, ns);
+            $.shop.changeListener($('.s-settings-form'), '[name^="new_action_border_color["]', handler, ns);
+            $.shop.changeListener($('.s-settings-form'), '[name^="edit_action_name["]', handler, ns);
+            $.shop.changeListener($('.s-settings-form'), '[name^="new_action_name["]', handler, ns);
+
+            $('.s-order-allowed-actions').unbind(ns).bind('change' + ns, handler);
+        };
+
+        changeListener(function () {
+            $('#s-settings-order-states-submit').removeClass('green').addClass('yellow');
+        });
+        
         // init buttons preview
         (function () {
 
@@ -297,24 +326,31 @@ $.extend($.settings || {}, {
                 alert($_('This is a preview of actions available for orders in this state'));
             });
 
-            var updatePreview = function() {
+            var updatePreview = function fn() {
+                fn.xhr && fn.xhr.abort();
                 var url = '?module=settings&action=orderStates&id=' + options.id;
                 var place = $('.s-workflow-action-buttons-preview');
                 var tmp = $('<div style="display: none;">').insertAfter(place);
                 var data = formSerialize();
-                $.post(url, data, function (html) {
-                    var t = $('<div>').html(html);
-                    var new_preview = t.find('.s-workflow-action-buttons-preview');
-                    t.remove();
-                    tmp.html(new_preview.html());
-                    var new_height = tmp.show().height();
-                    place.height(place.height());       // fix height
-                    place.html(tmp.html());
-                    tmp.remove();
-                    place.animate({
-                        height: new_height
+                fn.xhr = $.post(url, data)
+                    .done(
+                        function (html) {
+                            var t = $('<div>').html(html);
+                            var new_preview = t.find('.s-workflow-action-buttons-preview');
+                            t.remove();
+                            tmp.html(new_preview.html());
+                            var new_height = tmp.show().height();
+                            place.height(place.height());       // fix height
+                            place.html(tmp.html());
+                            tmp.remove();
+                            place.animate({
+                                height: new_height
+                            });
+                        }
+                    )
+                    .always(function () {
+                        fn.xhr = null;
                     });
-                });
             };
             var updatePreviewRadio = function () {
                 var el = $(this);
@@ -323,22 +359,10 @@ $.extend($.settings || {}, {
                 }
             };
 
-            $('.s-settings-form')
-                .on('change', '[name="action[]"]', updatePreview)
-                .on('change', '.s-action-icon', updatePreview)
-                .on('change', '[name^="new_action["]', updatePreview)
-                .on('change', '[name^="new_action_name["]', updatePreview)
-                .on('change', '[name^="edit_action_name["]', updatePreview)
-                .on('change', '[name^="edit_action_border_color["]', updatePreview)
-                .on('change', '[name^="new_action_border_color["]', updatePreview)
-                .on('click', ':radio[name^="edit_action_link["]', updatePreviewRadio)
-                .on('click', ':radio[name^="new_action_link["]', updatePreviewRadio)
-            ;
+            changeListener(function () {
+                ($(this).is(':radio') ? updatePreviewRadio : updatePreview).call(this);
+            });
 
-            $.shop.changeListener($('.s-settings-form'), '[name^="edit_action_border_color["]', updatePreview);
-            $.shop.changeListener($('.s-settings-form'), '[name^="new_action_border_color["]', updatePreview);
-            $.shop.changeListener($('.s-settings-form'), '[name^="edit_action_name["]', updatePreview);
-            $.shop.changeListener($('.s-settings-form'), '[name^="new_action_name["]', updatePreview);
         })();
 
         $(document).trigger('order_states_init');
@@ -411,6 +435,20 @@ $.extend($.settings || {}, {
                             }
                         );
                     }
+                }
+            });
+        }
+
+        function orderActionsSortableInit() {
+            var $block = $('.s-order-allowed-actions');
+            $block.sortable({
+                distance: 5,
+                helper: 'clone',
+                items: '.s-order-action',
+                opacity: 0.75,
+                tolerance: 'pointer',
+                update: function (event, ui) {
+                    $block.trigger('change');
                 }
             });
         }

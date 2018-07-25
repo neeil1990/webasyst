@@ -1,6 +1,6 @@
 <?php
 
-class shopProductGetInfoMethod extends waAPIMethod
+class shopProductGetInfoMethod extends shopApiMethod
 {
     public function execute()
     {
@@ -26,9 +26,9 @@ class shopProductGetInfoMethod extends waAPIMethod
         $this->response['skus'] = array_values($p->skus);
         foreach ($this->response['skus'] as &$sku) {
             $stocks = array();
-            foreach ($sku['stock'] as  $stock_id => $count) {
+            foreach ($sku['stock'] as $stock_id => $count) {
                 $stocks[] = array(
-                    'id' => $stock_id,
+                    'id'    => $stock_id,
                     'count' => $count
                 );
             }

@@ -16,14 +16,17 @@ class shopPromosActions extends waViewActions
     {
         $storefronts = $this->getStorefronts();
         $promo_routes_model = new shopPromoRoutesModel();
-        foreach($promo_routes_model->getMaxSorts() as $d => $sort) {
-            if (empty($storefronts[$d]) && $d != '%all%') {
-                $storefronts[$d] = array(
-                    'storefront' => $d,
-                    'name' => $d,
-                    'active' => false,
-                    'sort' => 0,
-                );
+        foreach ($promo_routes_model->getMaxSorts() as $d => $sort) {
+            if ($d != '%all%') {
+                $d = rtrim($d, '/') . '/';
+                if (empty($storefronts[$d])) {
+                    $storefronts[$d] = array(
+                        'storefront' => $d,
+                        'name' => $d,
+                        'active' => false,
+                        'sort' => 0,
+                    );
+                }
             }
         }
 
@@ -44,14 +47,22 @@ class shopPromosActions extends waViewActions
         } else {
             $promos = $promo_model->getByStorefront($storefront['storefront']);
         }
-        foreach($promos as &$p) {
+        foreach ($promos as &$p) {
             $p['image_url'] = shopHelper::getPromoImageUrl($p['id'], $p['ext']);
         }
         unset($p);
 
         $counts = $promo_routes_model->getStorefrontCounts();
-        foreach($storefronts as &$s) {
+        foreach ($storefronts as &$s) {
             $s['count'] = ifset($counts[$s['storefront']], 0);
+            $s['name'] = waIdna::dec($s['name']);
+            unset($counts[$s['storefront']]);
+        }
+        foreach ($counts as $d => $count) {
+            $d = rtrim($d, '/') . '/';
+            if (!empty($storefronts[$d])) {
+                $storefronts[$d]['count'] += $count;
+            }
         }
         unset($s);
 
@@ -75,7 +86,7 @@ class shopPromosActions extends waViewActions
         }
 
         $sort = 0;
-        foreach($ids as $promo_id) {
+        foreach ($ids as $promo_id) {
             $sort++;
             $promo_routes_model = new shopPromoRoutesModel();
             $promo_routes_model->updateByField(array(
@@ -121,14 +132,14 @@ class shopPromosActions extends waViewActions
             $file_info = wa()->getStorage()->get('shop/promo/uploaded');
             if ($file_info && @is_writable($file_info['filepath'])) {
                 $data['ext'] = $file_info['extension'];
-            } else if (!$id) {
+            } elseif (!$id) {
                 $errors['image'] = _w('This field is required.');
             }
 
             // max_sort
             $storefronts_data = waRequest::post('storefronts', array(), 'array');
             if (!empty($storefronts_data['%all%'])) {
-                foreach($storefronts as $s) {
+                foreach ($storefronts as $s) {
                     if ($s['active'] && empty($storefronts_data[$s['storefront']])) {
                         $storefronts_data[$s['storefront']] = $s['sort'];
                     }
@@ -137,7 +148,7 @@ class shopPromosActions extends waViewActions
 
             $promo_routes_model = new shopPromoRoutesModel();
             $max_sorts = $promo_routes_model->getMaxSorts();
-            foreach($storefronts_data as $route => $sort) {
+            foreach ($storefronts_data as $route => $sort) {
                 if ($sort < 0) {
                     if (empty($max_sorts[$route])) {
                         $max_sorts[$route] = 0;
@@ -146,7 +157,7 @@ class shopPromosActions extends waViewActions
                     $storefronts_data[$route] = $max_sorts[$route];
                 }
             }
-            if(empty($storefronts_data)) {
+            if (empty($storefronts_data)) {
                 $errors['storefronts'] = _w('Select at least one storefront.');
             }
 
@@ -171,13 +182,24 @@ class shopPromosActions extends waViewActions
                 }
 
                 // save image
-                $filepath = wa('shop')->getDataPath('promos/'.$id.'.'.$file_info['extension'], true);
-                @rename($file_info['filepath'], $filepath);
+                if (!empty($file_info)) {
+                    $path = wa('shop')->getDataPath('promos/', true);
+                    $filepath = $path.sprintf('%s.%s', $id, $file_info['extension']);
+                    $files = waFiles::listdir($path);
+                    $pattern = sprintf('@^%d\.@', $id);
+                    foreach ($files as $file) {
+                        if (preg_match($pattern, $file)) {
+                            waFiles::delete($path.$file);
+                        }
+                    }
+
+                    waFiles::move($file_info['filepath'], $filepath);
+                }
                 $this->clearUpload();
 
                 // Save storefronts
                 $values = array();
-                foreach($storefronts_data as $route => $sort) {
+                foreach ($storefronts_data as $route => $sort) {
                     $values[] = array(
                         'sort' => $sort,
                         'promo_id' => $id,
@@ -194,7 +216,7 @@ class shopPromosActions extends waViewActions
             } else {
                 $promo = $data;
                 $promo['id'] = $id;
-                foreach($storefronts as $d => $s) {
+                foreach ($storefronts as $d => $s) {
                     if (empty($storefronts_data[$d])) {
                         $storefronts[$d]['sort'] = -1;
                     } else {
@@ -227,7 +249,7 @@ class shopPromosActions extends waViewActions
     protected function closeAndReload($promo, $storefronts)
     {
         $hashes = array();
-        foreach($storefronts as $s) {
+        foreach ($storefronts as $s) {
             if ($s['storefront'] != '%all%' && $s['sort'] > 0) {
                 $hashes[] = '#/promos/storefront='.$s['storefront'];
             }
@@ -294,15 +316,15 @@ EOF;
     {
         // Remove old uploaded file if exists
         $file_info = wa()->getStorage()->get('shop/promo/uploaded');
+        $attach = null;
         if ($file_info && is_writable($file_info['filepath'])) {
             $file_path = $file_info['filepath'];
-            $this->getResponse()->addHeader("Content-type", waFiles::getMimeType('a.'.$file_info['extension']));
+            $attach ='a.'.$file_info['extension'];
         } else {
             $file_path = wa('shop')->getAppPath('img/image-dummy.png');
             $this->getResponse()->addHeader("Content-type", waFiles::getMimeType('a.png'));
         }
-        $this->getResponse()->sendHeaders();
-        readfile($file_path);
+        waFiles::readFile($file_path, $attach);
     }
 
     protected function uploadActionHelper(waRequestFile $file)
@@ -356,10 +378,11 @@ EOF;
         wa()->getStorage()->del('shop/promo/uploaded');
     }
 
-    protected function getStorefronts($promo_id=null)
+    protected function getStorefronts($promo_id = null)
     {
         $storefronts = array();
-        foreach(shopHelper::getStorefronts() as $url) {
+        foreach (shopHelper::getStorefronts() as $url) {
+            $url = rtrim($url, '/').'/';
             $storefronts[$url] = array(
                 'storefront' => $url,
                 'name' => $url,
@@ -371,7 +394,8 @@ EOF;
         if ($promo_id) {
             $promo_routes_model = new shopPromoRoutesModel();
             $rows = $promo_routes_model->getByField('promo_id', $promo_id, 'storefront');
-            foreach($rows as $url => $row) {
+            foreach ($rows as $url => $row) {
+                $url = rtrim($url, '/').'/';
                 if (empty($storefronts[$url])) {
                     $storefronts[$url] = array(
                         'storefront' => $url,
@@ -386,4 +410,3 @@ EOF;
         return $storefronts;
     }
 }
-

@@ -1,6 +1,6 @@
 <?php
 
-class shopSetAddMethod extends waAPIMethod
+class shopSetAddMethod extends shopApiMethod
 {
     protected $method = 'POST';
 
@@ -25,5 +25,4 @@ class shopSetAddMethod extends waAPIMethod
             throw new waAPIException('server_error', 500);
         }
     }
-
 }

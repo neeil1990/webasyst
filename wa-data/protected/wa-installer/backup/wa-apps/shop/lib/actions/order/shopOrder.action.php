@@ -14,6 +14,7 @@ class shopOrderAction extends waViewAction
 
     public function execute()
     {
+        wa()->getRequest();
         $order = $this->getOrder();
         if (!$order) {
             $this->view->assign('order', $order);
@@ -135,13 +136,13 @@ class shopOrderAction extends waViewAction
                         $tracking = <<<HTML
 <i class="icon16 loading" id="{$id}"></i>
 <script type="text/javascript">
-(function () {
-    $.get('?module=order&action=tracking&order_id={$order['id']}',function(data){
-        if(data && data.status=='ok'){
-            $('#{$id}').replaceWith(data.data.tracking);
-        }
-    });
-})();
+    (function () {
+        $.get('?module=order&action=tracking&order_id={$order['id']}', function (data) {
+            if (data && data.status === 'ok') {
+                $('#{$id}').replaceWith(data.data.tracking);
+            }
+        });
+    })();
 </script>
 HTML;
 
@@ -172,14 +173,8 @@ HTML;
 
         $settings = $config->getCheckoutSettings();
         $form_fields = ifset($settings['contactinfo']['fields'], array());
-
-
-        $map_adapter = $config->getGeneralSettings('map');
-        if (!$map_adapter) {
-            $map_adapter = 'google';
-        }
         try {
-            $map = wa()->getMap($map_adapter)->getHTML(shopHelper::getShippingAddressText($params), array(
+            $map = wa()->getMap()->getHTML(shopHelper::getShippingAddressText($params), array(
                 'width'  => '200px',
                 'height' => '200px',
                 'zoom'   => 13,
@@ -247,47 +242,106 @@ HTML;
             $similar_contacts = array();
         }
 
+        $courier = null;
+        if (!empty($params['courier_id'])) {
+            $courier_model = new shopApiCourierModel();
+            $courier = $courier_model->getById($params['courier_id']);
+        }
+
+        if (!empty($order['params']['storefront'])) {
+            $idna = new waIdna();
+            $order['params']['storefront_decoded'] = $idna->decode($order['params']['storefront']);
+        }
+
+        list($customer_delivery_date, $customer_delivery_time) = shopHelper::getOrderCustomerDeliveryTime($params);
+        list($shipping_date, $shipping_time_start, $shipping_time_end) = shopHelper::getOrderShippingInterval($params);
+
         $this->view->assign(array(
-            'customer'             => $customer,
-            'customer_contact'     => $customer_contact,
-            'main_contact_info'    => $main_contact_info,
-            'similar_contacts'     => $similar_contacts,
-            'currency'             => $config->getCurrency(),
-            'order'                => $order,
-            'params'               => $params,
-            'log'                  => $log,
-            'last_action_datetime' => $last_action_datetime,
-            'bottom_buttons'       => $bottom_buttons,
-            'top_buttons'          => $top_buttons,
-            'actions_html'         => $actions_html,
-            'buttons'              => $buttons,
-            'filter_params'        => $this->getParams(),
-            'filter_params_str'    => $this->getParams(true),
-            'count_new'            => $this->getModel()->getStateCounters('new'),
-            'timeout'              => $config->getOption('orders_update_list'),
-            'printable_docs'       => shopPrintforms::getOrderPrintforms(array_merge($order, array('params' => $params))),
-            'billing_address'      => $billing_address,
-            'shipping_address'     => $shipping_address,
-            'shipping_id'          => ifset($params['shipping_id'], '').'.'.ifset($params['shipping_rate_id'], ''),
-            'offset'               => $this->getModel()->getOffset($order['id'], $this->getParams(), true),
+            'customer'                   => $customer,
+            'customer_contact'           => $customer_contact,
+            'main_contact_info'          => $main_contact_info,
+            'similar_contacts'           => $similar_contacts,
+            'currency'                   => $config->getCurrency(),
+            'order'                      => $order,
+            'params'                     => $params,
+            'log'                        => $log,
+            'last_action_datetime'       => $last_action_datetime,
+            'bottom_buttons'             => $bottom_buttons,
+            'top_buttons'                => $top_buttons,
+            'actions_html'               => $actions_html,
+            'buttons'                    => $buttons,
+            'sales_channel'              => $this->formatSalesChannel($params),
+            'filter_params'              => $this->getParams(),
+            'filter_params_str'          => $this->getParams(true),
+            'count_new'                  => $this->getModel()->getStateCounters('new'),
+            'timeout'                    => $config->getOption('orders_update_list'),
+            'printable_docs'             => shopPrintforms::getOrderPrintforms(array_merge($order, array('params' => $params))),
+            'billing_address'            => $billing_address,
+            'shipping_address'           => $shipping_address,
+            'shipping_id'                => ifset($params['shipping_id'], '').'.'.ifset($params['shipping_rate_id'], ''),
+            'shipping_date'              => $shipping_date,
+            'shipping_time_start'        => $shipping_time_start,
+            'shipping_time_end'          => $shipping_time_end,
+            'customer_delivery_date'     => $customer_delivery_date,
+            'customer_delivery_time'     => $customer_delivery_time,
+            'customer_delivery_date_str' => ifset($params['shipping_params_desired_delivery.date_str']),
+            'offset'                     => $this->getModel()->getOffset($order['id'], $this->getParams(), true),
+            'courier'                    => $courier,
         ));
 
-        /**
-         * Backend order profile page
-         * UI hook allow extends order profile page
-         * @event backend_order
-         * @param array $order
-         * @return array[string][string]string $return[%plugin_id%]['title_suffix'] html output
-         * @return array[string][string]string $return[%plugin_id%]['action_button'] html output
-         * @return array[string][string]string $return[%plugin_id%]['action_link'] html output
-         * @return array[string][string]string $return[%plugin_id%]['info_section'] html output
-         */
-        $this->view->assign('backend_order', wa()->event('backend_order', $order, array(
-            'title_suffix',
-            'action_button',
-            'action_link',
-            'info_section'
-        )));
+        if (waRequest::get('printable')) {
+            /**
+             * UI hook for extending printable order page version in backend.
+             * @event backend_order_print
+             * @param array $order Order params.
+             * @return array[string][string]string $return[%plugin_id%]['info_section'] HTML output.
+             */
+            $this->view->assign('backend_order_print', wa()->event('backend_order_print', $order, array(
+                'info_section'
+            )));
+
+            $template = $this->getTemplate();
+            $this->setTemplate(preg_replace('@(\.html)$@', '.printable$1', $template));
+        } else {
+            /**
+             * Backend order profile page
+             * UI hook allow extends order profile page
+             * @event backend_order
+             * @param array $order
+             * @return array[string][string]string $return[%plugin_id%]['title_suffix'] html output
+             * @return array[string][string]string $return[%plugin_id%]['action_button'] html output
+             * @return array[string][string]string $return[%plugin_id%]['action_link'] html output
+             * @return array[string][string]string $return[%plugin_id%]['info_section'] html output
+             * @return array[string][string]string $return[%plugin_id%]['aux_info'] html output
+             *
+             */
+            $this->view->assign('backend_order', wa()->event('backend_order', $order, array(
+                'title_suffix',
+                'action_button',
+                'action_link',
+                'info_section',
+                'aux_info',
+            )));
+        }
+    }
+
+    protected function formatSalesChannel($params)
+    {
+        if (empty($params['sales_channel']) || $params['sales_channel'] == 'other:') {
+            return _w('Unknown channel');
+        } elseif ($params['sales_channel'] == 'backend:') {
+            return _w('Backend');
+        } elseif ($params['sales_channel'] == 'buy_button:') {
+            return _w('Buy button');
+        } elseif (substr($params['sales_channel'], 0, 11) == 'storefront:') {
+            return _w('Storefront');
+        } else {
+            $result = array(
+                $params['sales_channel'] => $params['sales_channel'],
+            );
+            wa('shop')->event('backend_reports_channels', $result);
+            return ifempty($result[$params['sales_channel']], $params['sales_channel']);
+        }
     }
 
     public function getOrder()
@@ -296,10 +350,10 @@ HTML;
         if (!$id) {
             return array();
         }
-        $order = $this->_getOrder($id);
+        $order = $this->getRawOrder($id);
         if (!$order) {
             $id = shopHelper::decodeOrderId($id);
-            $order = $this->_getOrder($id);
+            $order = $this->getRawOrder($id);
             if (!$order) {
                 return array();
             }
@@ -346,7 +400,7 @@ HTML;
         return $this->model;
     }
 
-    private function _getOrder($id)
+    private function getRawOrder($id)
     {
         $order = $this->getModel()->getOrder($id);
         if (!$order) {
@@ -358,7 +412,17 @@ HTML;
 
         $sku_ids = array();
         $stock_ids = array();
+        $product_ids = array();
+        $service_ids = array();
+
         foreach ($order['items'] as $item) {
+            //get product_id and service_id to clear from deleted items
+            if ($item['type'] == 'product') {
+                $product_ids[] = $item['product_id'];
+            } else {
+                $service_ids[] = $item['service_id'];
+            }
+
             if ($item['stock_id']) {
                 $stock_ids[] = $item['stock_id'];
             }
@@ -379,9 +443,22 @@ HTML;
         unset($item);
 
         $skus = $this->getSkus($sku_ids);
+
         $sku_stocks = $this->getSkuStocks($sku_ids);
 
+        //get existing services/products
+        $product_ids = $this->getProducts($product_ids);
+        $service_ids = $this->getServices($service_ids);
+
         foreach ($order['items'] as &$item) {
+
+            //check whether the item was deleted
+            if ($item['type'] == 'product' && empty($product_ids[$item['product_id']])) {
+                $item['deleted'] = 1;
+            } elseif($item['type'] == 'service' && empty($service_ids[$item['service_id']])) {
+                $item['deleted'] = 1;
+            }
+
             // product and existing sku
             if (isset($skus[$item['sku_id']])) {
                 $s = $skus[$item['sku_id']];
@@ -406,6 +483,34 @@ HTML;
 
         return $order;
 
+    }
+
+    /**
+     * Get existing services
+     * @param array $service_ids
+     * @return array|null
+     */
+    public function getServices($service_ids = array())
+    {
+        if (!$service_ids) {
+            return array();
+        }
+        $ssm = new shopServiceModel();
+        return $ssm->getByField('id', $service_ids, 'id');
+    }
+
+    /**
+     * Get existing products
+     * @param array $product_ids
+     * @return array|null
+     */
+    public function getProducts($product_ids = array())
+    {
+        if (!$product_ids) {
+            return array();
+        }
+        $spm = new shopProductModel();
+        return $spm->getByField('id', $product_ids, 'id');
     }
 
     public function getSkus($sku_ids)

@@ -51,6 +51,7 @@ editClick:(function ($) {
          */
         init: function (options, tab) {
             this.setOptions(options, tab);
+            this.deleteDivider();
         },
 
         setOptions: function (options, tab) {
@@ -72,7 +73,13 @@ editClick:(function ($) {
             }
         },
 
-
+        deleteDivider: function() {
+            $('.js-delete-divider').click(function () {
+                $(this).parent().find('input').val('');
+                $(this).parent().hide();
+                $('#s-product-save-button').removeClass('green').addClass('yellow');
+            })
+        },
         /**
          * @param {String} path
          * @return {{id:number,mode:string,tab:string,tail:string,raw:string,params:{}}}
@@ -435,7 +442,6 @@ editClick:(function ($) {
                     });
                 $('#s-product-edit-forms').find(':input[name="product\\[id\\]"]').val(this.path.id);
 
-
                 window.location.hash = hash;
             } else if (this.path.id != data.id) {
                 $.shop.error('Abnormal product ID change', [this.path.id, data]);
@@ -508,7 +514,6 @@ editClick:(function ($) {
             // category select items
             tab_content.find('select.s-product-categories').each(function () {
                 var item = $(this);
-                console.log(item);
                 var parent = item.parent();
                 var val = item.val();
                 if (val == 'select' || val == '---') {
@@ -556,7 +561,6 @@ editClick:(function ($) {
             $('#s-product-categories').html(tmpl('template-product-categories', {
                 categories: data.categories || []
             }));
-
 
             $('#s-product-tags').html(tmpl('template-product-tags', {
                 tags: data.tags || []
@@ -796,9 +800,7 @@ editClick:(function ($) {
         },
 
         editTabShow: function (path) {
-
             var $tab = $('#s-product-edit-forms .s-product-form.' + path.tab);
-            console.log($tab.length);
             if ($tab.length) {
                 $tab.show();
                 $.shop.trace('$.product.showTab', path);
@@ -809,7 +811,6 @@ editClick:(function ($) {
         },
 
         editClick: function ($el) {
-
             // #/product/{$product.id}/edit/stock/{$sku_id}/
             var args = $el.attr('href').replace(/.*#\/product\/(\d+|new)\/edit\//, '').replace(/\/$/, '').split('/');
             var params = [];
@@ -948,8 +949,20 @@ editClick:(function ($) {
             } else {
                 $.product.disableSkus(true, false);
             }
-        },
 
+            //copy prices if target are empty
+            var fields = ['compare_price','purchase_price'];
+            var $target,$source;
+            for(var i=0;i<fields.length;i++){
+                $target = $features.find(':input[name="product['+fields[i]+'_selectable]"]:first');
+                if ($target.length && !parseInt($target.val())) {
+                    $source = $(':input[name^="skus"][name$="[' + fields[i] + ']"]:first');
+                    if($source.length) {
+                        $target.val($source.val());
+                    }
+                }
+            }
+        },
 
         onSkuTypeChange: function (sku_type) {
             var $features = $('#s-product-feature-superposition-field-group');
@@ -957,16 +970,21 @@ editClick:(function ($) {
 
             // selectable features case
             if (sku_type == '1') {
+
                 var product_type = $(this.options.form_selector + ' :input[name="product[type_id]"]').val();
                 if ($features.data('type') != product_type) {
                     var data = {
                         base_price_selectable: $features.find(':input[name="product[base_price_selectable]"]').val(),
                         currency: $features.find('select.s-product-currency').val()
                     };
+                    if (!parseInt(data.base_price_selectable)) {
+                        data.base_price_selectable = $(':input[name^="skus"][name$="[price]"]:first').val();
+                    }
                     $.product.skuTypeFeaturesSelectableLoad(product_type, data);
                 } else {
                     $.product.onSkuTypeEnabled();
                 }
+
                 // flat sku case
             } else {
                 $features.hide();
@@ -976,7 +994,6 @@ editClick:(function ($) {
                 var $scope = $(this.options.form_selector).find('.s-product-skus');
 
                 if ($.product.path.id == 'new') {
-                    console.log($.product.path.id);
                     $.product.disableSkus(false, false);
                 } else {
 
@@ -1163,8 +1180,16 @@ editClick:(function ($) {
             $form.on('change.product, keyup.product', 'div.s-product-form:not(.ajax) :input', function (e) {
                 $.product.helper.onChange($(this).parents('div.s-product-form'));
             });
-            $form.on('change.product, keyup.product, keypress.product', ':input[name="product\[name\]"]', function (e) {
+            $form.on('change.product, keyup.product, keypress.product', ':input[name="product[name]"]', function (e) {
                 $.product.helper.onNameChange($(this), false, $.product.options.update_delay || 500);
+            });
+            $.shop.changeListener($form, ':input[name="product[url]"]', function () {
+                var $elem = $(this);
+                $.getJSON('?module=product&action=checkUrlInUse', { id: $.product.path.id,  url: $elem.val() || '' },
+                    function (r) {
+                        $.product.informAboutUrlInUse(r.status === 'ok' && r.data.url_in_use);
+                    }
+                );
             });
 
             var product_tags = $('#product-tags');
@@ -1214,6 +1239,14 @@ editClick:(function ($) {
             }).change();
 
             $.product.featureSelectableInit();
+        },
+
+        informAboutUrlInUse: function (url_in_use) {
+            if (url_in_use) {
+                $('#s-product-url-in-use-block').show().find('.s-text').html(url_in_use);
+            } else {
+                $('#s-product-url-in-use-block').hide();
+            }
         },
 
         editFocus: function () {
@@ -1368,11 +1401,8 @@ editClick:(function ($) {
             if (path.id == 'new') {
                 if ($.product_list && $.isArray($.product_list.collection_hash)) {
                     if ($.product_list.collection_hash[0] == 'category') {
-                        main_tab_content.find('input.product-categories-json').val(
+                        main_tab_content.find('select.s-product-categories').val(
                             $.product_list.collection_hash[1]
-                        );
-                        main_tab_content.find('.name_category_first').text(
-                           'Текущая категория: ' + $.product_list.collection_hash[2]
                         );
                     } else if ($.product_list.collection_hash[0] == 'set') {
                         main_tab_content.find('.add-set-button').click().closest('.field').find('select:first').val($.product_list.collection_hash[1]);
@@ -1413,7 +1443,6 @@ editClick:(function ($) {
 
             // saving new category
             main_tab_content.off('click.product', '.s-new-category input[type=button]').on('click.product', '.s-new-category input[type=button]', function (e) {
-
                 var self = $(this).parent();
                 var parent = self.parent();
                 var input = self.find('input[name=new_category]');
@@ -1497,7 +1526,6 @@ editClick:(function ($) {
                         }
                     }
                 }
-
                 selector = ':input[name$="' + name.replace(/(\[|\]|\|\-)/g, '\\$1') + '"]:first';
             } else if (path && path.id == 'new') {
                 selector = ':input[name$="\[name\]"]:first';
@@ -1578,6 +1606,7 @@ editClick:(function ($) {
 
                 }
             },
+
             onChange: function (container) {
                 var id = this.getContainerId(container);
                 var self = this;
@@ -1596,22 +1625,21 @@ editClick:(function ($) {
                 if (this.data.url_helper.timer) {
                     clearTimeout(this.data.url_helper.timer);
                 }
-                var data = {
-                    'str': $(element).val()
-                };
+                var data = { 'name': $(element).val() };
                 $.shop.trace('$.product.urlHelper ', data);
                 if (data.url != this.data.url_helper.name) {
                     var self = this;
                     this.data.url_helper.url = data.url;
-                    $.ajax({
-                        'url': '?action=transliterate',
-                        'dataType': 'html',
-                        'data': data
-                    }).done(function (response) {
-                        if ((response = $.parseJSON(response)) && (response.status == "ok")) {
-                            self.data.url_helper.url = response.data;
-                            target.val(response.data);
+                    $.getJSON('?module=product&action=suggestUrl', data, function (r) {
+                        if (r.status === 'ok') {
+
+                            // save current url, for track is it was changed
+                            self.data.url_helper.url = r.data.url;
+                            target.val(r.data.url);
                             target.parent().find('.js-url-helper').hide();
+
+                            // inform about url in use by show message or hide it
+                            $.product.informAboutUrlInUse(r.data.in_use);
                         }
                     });
                 } else {
@@ -1785,7 +1813,7 @@ editClick:(function ($) {
         multiSkus: function (count) {
             var table = $('#s-product-edit-forms .s-product-form.main table.s-product-skus:first');
             if (count > 1) {
-                table.find('thead tr').show();
+                table.find('thead tr th.s-sku-sort').show();
                 table.find('.s-name,.s-sku-sort').show('slow');
                 table.find('.delete').parent('a').show();
                 if (count == 2) {
@@ -1794,7 +1822,7 @@ editClick:(function ($) {
                     table.find('> tbody:first > tr:last .s-name :input').focus();
                 }
             } else {
-                table.find('thead tr').hide();
+                table.find('thead tr th.s-sku-sort').hide();
                 table.find('.s-name,.s-sku-sort').hide();
                 table.find('.delete').parent('a').hide();
             }
@@ -1971,7 +1999,7 @@ editClick:(function ($) {
         },
 
         editTabMainCategoriesAdd: function () {
-            var control = $('#s-product-edit-forms .s-product-form.main input.product-categories-json:first').parent('div');
+            var control = $('#s-product-edit-forms .s-product-form.main select.s-product-categories:last').parent('div');
             var clone = control.clone(false);
             clone.find('select').val('select').attr('disabled', false).show();
             clone.find('input.val').val(0).attr('disabled', true).parent().hide();
@@ -1979,7 +2007,6 @@ editClick:(function ($) {
             clone.find('.s-storefront-map').html('');
             clone.show();
             control.after(clone);
-            product_categories_json();
         },
 
         editTabMainSkuStock: function (sku_id, $el) {
@@ -2400,7 +2427,6 @@ editClick:(function ($) {
             });
 
             var category_name = this.getData('main', 'category_name');
-            console.log(category_name);
             if (category_name !== null) {
                 keywords.push(category_name);
             }

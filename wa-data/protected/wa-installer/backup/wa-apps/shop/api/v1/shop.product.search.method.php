@@ -1,14 +1,16 @@
 <?php
 
-class shopProductSearchMethod extends waAPIMethod
+class shopProductSearchMethod extends shopApiMethod
 {
     protected $method = 'GET';
+    protected $courier_allowed = true;
 
     public function execute()
     {
         $hash = $this->get('hash');
         $filters = waRequest::get('filters', null, 'array');
         $offset = waRequest::get('offset', 0, 'int');
+        $escape = !!waRequest::get('escape', true);
         if ($offset < 0) {
             throw new waAPIException('invalid_param', 'Param offset must be greater than or equal to zero');
         }
@@ -20,11 +22,23 @@ class shopProductSearchMethod extends waAPIMethod
             throw new waAPIException('invalid_param', 'Param limit must be less or equal 1000');
         }
 
+
         $collection = new shopProductsCollection($hash);
         if ($filters) {
             $collection->filters($filters);
         }
-        $products = $collection->getProducts(self::getColelctionFields(), $offset, $limit);
+
+        // Check courier access rights
+        if ($this->courier) {
+            $alias = $collection->addJoin('shop_order_items', ":table.product_id=p.id AND :table.type='product'");
+            $collection->addJoin('shop_order_params',
+                ":table.order_id={$alias}.order_id AND :table.name='courier_id'",
+                ":table.value='{$this->courier['id']}'"
+            );
+            $collection->groupBy('p.id');
+        }
+
+        $products = $collection->getProducts(self::getCollectionFields(), $offset, $limit, $escape);
 
         $this->response['count'] = $collection->count();
         $this->response['offset'] = $offset;
@@ -44,12 +58,12 @@ class shopProductSearchMethod extends waAPIMethod
         unset($p);
     }
 
-    protected static function getColelctionFields()
+    protected static function getCollectionFields()
     {
         $fields = array('*' => 1);
         $additional_fields = waRequest::request('fields', '', 'string');
         if ($additional_fields) {
-            foreach(explode(',', $additional_fields) as $f) {
+            foreach (explode(',', $additional_fields) as $f) {
                 $fields[$f] = 1;
             }
         }

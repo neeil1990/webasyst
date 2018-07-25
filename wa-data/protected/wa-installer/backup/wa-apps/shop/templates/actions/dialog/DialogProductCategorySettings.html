@@ -16,11 +16,11 @@
                 {if $frontend_url@first}
                     {strip}
                         <span class="s-frontend-base-url" style="display:none;">
-                            {$frontend_url.base}
+                            {waIdna::dec($frontend_url.base)}
                         </span>
                         <a href="{$frontend_url.url}" class="s-frontend-base-url" target="_blank">
-                            {$frontend_url.base}
-                            <span id="s-settings-frontend-url">{$settings.url}</span>
+                            {waIdna::dec($frontend_url.base)}
+                            <span id="s-settings-frontend-url">{waIdna::dec($settings.url)}</span>
                             <span class="slash"></span>
                         </a>
                     {/strip}
@@ -28,7 +28,7 @@
                     <a href="javascript:void(0);" class="small gray inline-link" id="s-settings-frontend-url-edit-link"><i class="icon10 edit"></i><b><i>[`edit`]</i></b></a>
                     <em class="errormsg"></em>
                 {else}
-                    <a href="{$frontend_url.url}" target="_blank">{$frontend_url.url}</a>
+                    <a href="{$frontend_url.url}" target="_blank">{waIdna::dec($frontend_url.url)}</a>
                 {/if}
             </div>
         {/foreach}
@@ -36,7 +36,7 @@
         <div class="value no-shift">
             <label>
                 <input value="1" name="hidden" {if !$settings.status}checked{/if} type="checkbox" name="hidden">
-                [`Hidden category`] <span class="hint">[`Enable to temporarily hide this category from the storefront`]</span>
+                [`Hidden category`] <span class="hint">[`Hide links to this category in the storefront`]</span>
             </label>
         </div>
     </div>
@@ -94,8 +94,11 @@
                     <li>
                         <i class="icon16 sort"></i>
                         <label><input type="checkbox" name="filter[]" value="{$feature.id}"
-                                            {if !empty($feature.checked) || ($feature.id == 'price' && !$settings.allow_filter)}checked="checked"{/if}>
-                                {$feature.name|escape}
+                            {if !empty($feature.checked) || ($feature.id == 'price' && !$settings.allow_filter)}checked="checked"{/if}>
+                            {$feature.name|escape}
+                            {if !empty($feature.code)}
+                                <span class="hint">{$feature.code}</span>
+                            {/if}
                         </label>
                     </li>
                 {/foreach}
@@ -292,7 +295,7 @@
                                 <input id="s-condition-feature-{$f.code}" type="checkbox" name="condition[feature][]" value="{$f.code}" {if isset($settings.conditions.feature[$f.code])}checked{/if}>
                             </td>
                             <td>
-                                <label for="s-condition-feature-{$f.code}">{$f.name|escape}</label>
+                                <label for="s-condition-feature-{$f.code}">{$f.name|escape}</label> <span class="hint">{$f.code}</span>
                             </td>
                             <td colspan="2">
                                 <div style="max-width: 600px; overflow: hidden;">

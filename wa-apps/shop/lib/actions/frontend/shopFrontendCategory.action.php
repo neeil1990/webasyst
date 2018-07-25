@@ -142,7 +142,6 @@ class shopFrontendCategoryAction extends shopFrontendAction
             }
             $category_value_ids = $collection->getFeatureValueIds(false);
 
-
             foreach ($filter_ids as $fid) {
                 if ($fid == 'price') {
                     $range = $collection->getPriceRange();
@@ -162,11 +161,11 @@ class shopFrontendCategoryAction extends shopFrontendAction
                         } else {
                             if ($v instanceof shopRangeValue) {
                                 $begin = $this->getFeatureValue($v->begin);
-                                if ($min === null || $begin < $min) {
+                                if (is_numeric($begin) && ($min === null || (float)$begin < (float)$min)) {
                                     $min = $begin;
                                 }
                                 $end = $this->getFeatureValue($v->end);
-                                if ($max === null || $end > $max) {
+                                if (is_numeric($end) && ($max === null || (float)$end > (float)$max)) {
                                     $max = $end;
                                     if ($v->end instanceof shopDimensionValue) {
                                         $unit = $v->end->unit;
@@ -214,6 +213,10 @@ class shopFrontendCategoryAction extends shopFrontendAction
         $category_filters = $filters;
 
         if ($category['type'] == shopCategoryModel::TYPE_DYNAMIC) {
+
+            // Collect feature codes we do not have IDs for
+            $feature_codes_to_fix_ids = array();
+
             $conditions = shopProductsCollection::parseConditions($category['conditions']);
             foreach ($conditions as $field => $field_conditions) {
                 switch ($field) {
@@ -282,7 +285,12 @@ class shopFrontendCategoryAction extends shopFrontendAction
                         if (preg_match('@(\w+)\.(value_id)$@', $field, $matches)) {
                             $feature_code = $matches[1];
                             $value_id = array_map('intval', preg_split('@[,\s]+@', end($field_conditions)));
-                            $feature_id = ifset($feature_map[$feature_code], $feature_code);
+                            if (!isset($feature_map[$feature_code])) {
+                                // $feature_map is not guaranteed to contain all features at this point.
+                                // We will fetch and fix them later.
+                                $feature_codes_to_fix_ids[$feature_code] = $feature_code;
+                            }
+                            $feature_id = ifset($feature_map, $feature_code, $feature_code);
                             if (!isset($category_filters[$feature_id])) {
                                 $category_filters[$feature_id] = array();
                             }
@@ -306,6 +314,20 @@ class shopFrontendCategoryAction extends shopFrontendAction
                         break;
                 }
             }
+
+            // Loop above might have written filter code where filter_id is expected,
+            // because it did not find feature_id by code. This fixes that.
+            if ($feature_codes_to_fix_ids) {
+                if (empty($feature_model)) {
+                    $feature_model = new shopFeatureModel();
+                }
+                foreach($feature_model->getByCode($feature_codes_to_fix_ids) as $f) {
+                    if (isset($category_filters[$f['code']])) {
+                        $category_filters[$f['id']] = $category_filters[$f['code']];
+                        unset($category_filters[$f['code']]);
+                    }
+                }
+            }
         }
 
         if ($filters) {
@@ -315,9 +337,6 @@ class shopFrontendCategoryAction extends shopFrontendAction
                 }
             }
             $this->view->assign('filters', $filters);
-        }
-        if ($category_filters) {
-            $this->filterListSkus($category_filters, $filter_data);
         }
 
         // set meta
@@ -367,149 +386,5 @@ class shopFrontendCategoryAction extends shopFrontendAction
             return 0;
         }
         return ($a['sort'] < $b['sort']) ? -1 : 1;
-    }
-
-    protected function filterListSkus($filters, $data)
-    {
-        $products = $this->view->getVars('products');
-        /**
-         * @var array[] $products
-         */
-        $product_ids = array();
-        foreach ($products as $p_id => $p) {
-            if ($p['sku_count'] > 1) {
-                $product_ids[] = $p_id;
-            }
-        }
-        if ($product_ids) {
-            $min_price = $max_price = null;
-            $features = array();
-            foreach ($filters as $fid => $f) {
-                if ($fid == 'price') {
-                    $min_price = ifset($data['price_min']);
-                    if (!empty($min_price)) {
-                        $min_price = (double)$min_price;
-                    } else {
-                        $min_price = null;
-                    }
-                    $max_price = ifset($data['price_max']);
-                    if (!empty($max_price)) {
-                        $max_price = (double)$max_price;
-                    } else {
-                        $max_price = null;
-                    }
-                } else {
-                    $feature_values = ifset($data[$f['code']]);
-                    if ($feature_values && !isset($feature_values['min']) && !isset($feature_values['max'])) {
-                        $features[$fid] = $feature_values;
-                    }
-                }
-            }
-
-            $rows = array();
-            if ($features) {
-                $pf_model = new shopProductFeaturesModel();
-                $rows = $pf_model->getSkusByFeatures($product_ids, $features, waRequest::param('drop_out_of_stock') == 2);
-                $image_ids = array();
-                foreach ($rows as $row) {
-                    if ($row['image_id']) {
-                        $image_ids[] = $row['image_id'];
-                    }
-                }
-                if ($image_ids) {
-                    $image_model = new shopProductImagesModel();
-                    $images = $image_model->getById($image_ids);
-                    foreach ($rows as &$row) {
-                        if ($row['image_id'] && isset($images[$row['image_id']])) {
-                            $row['ext'] = $images[$row['image_id']]['ext'];
-                            $row['image_filename'] = $images[$row['image_id']]['filename'];
-                            $row['image_description'] = $images[$row['image_id']]['description'];
-                        }
-                    }
-                    unset($row);
-                }
-            } elseif ($min_price || $max_price) {
-                $ps_model = new shopProductSkusModel();
-                $rows = $ps_model->getByField('product_id', $product_ids, true);
-            }
-
-            $event_params = array(
-                'products' => $products,
-                'skus'     => &$rows
-            );
-            wa('shop')->event('frontend_products', $event_params);
-
-            $product_skus = array();
-            shopRounding::roundSkus($rows, $products);
-            foreach ($rows as $row) {
-                $product_skus[$row['product_id']][] = $row;
-            }
-
-            $default_currency = $this->getConfig()->getCurrency(true);
-            $strict = true;
-            if ($product_skus) {
-                foreach ($product_skus as $product_id => $skus) {
-                    $currency = $products[$product_id]['currency'];
-
-                    usort($skus, array($this, 'sortSkus'));
-                    $k = null;
-                    foreach ($skus as $i => $sku) {
-                        if ($min_price) {
-                            $tmp_price = shop_currency($min_price, true, $currency, false);
-                            if ($sku['price'] < $tmp_price) {
-                                continue;
-                            }
-                        }
-                        if ($max_price) {
-                            $tmp_price = shop_currency($max_price, true, $currency, false);
-                            if ($sku['price'] > $tmp_price) {
-                                continue;
-                            }
-                        }
-                        if ($products[$product_id]['sku_id'] == $sku['id']) {
-                            $k = $i;
-                            break;
-                        }
-
-                        if ($k === null) {
-                            $k = $i;
-                        }
-                    }
-                    if ($k === null) {
-                        //no one matched!
-                        if ($strict) {
-                            unset($products[$product_id]);
-                        } else {
-                            $k = 0;
-                        }
-                    }
-                    if ($k !== null) {
-                        $sku = $skus[$k];
-
-                        if (($products[$product_id]['sku_id'] != $sku['id'])) {
-                            $products[$product_id]['sku_id'] = $sku['id'];
-                            $products[$product_id]['frontend_url'] .= '?sku='.$sku['id'];
-                            $products[$product_id]['price'] = shop_currency($sku['price'], $currency, $default_currency, false);
-                            $products[$product_id]['frontend_price'] = $sku['price'];
-                            $products[$product_id]['unconverted_price'] = shop_currency($sku['unconverted_price'], $currency, $default_currency, false);
-                            $products[$product_id]['compare_price'] = shop_currency($sku['compare_price'], $currency, $default_currency, false);
-                            $products[$product_id]['frontend_compare_price'] = $sku['compare_price'];
-                            $products[$product_id]['unconverted_compare_price'] = shop_currency($sku['unconverted_compare_price'], $currency, $default_currency, false);
-
-                            if ($sku['image_id'] && $products[$product_id]['image_id'] != $sku['image_id']) {
-                                if (isset($sku['ext'])) {
-                                    $products[$product_id]['image_id'] = $sku['image_id'];
-                                    $products[$product_id]['ext'] = $sku['ext'];
-                                    $products[$product_id]['image_filename'] = $sku['image_filename'];
-                                }
-                            }
-                        }
-                    }
-
-                }
-
-                $this->view->assign('products', $products);
-            }
-        }
     }
 }

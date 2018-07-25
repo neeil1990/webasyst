@@ -45,10 +45,21 @@ class shopHelper
         $plugin_model = new shopPluginModel();
         $methods = $plugin_model->listPlugins(shopPluginModel::TYPE_PAYMENT);
         $order_params = $order ? $order['params'] : array();
+
+        $order_customer = null;
+        if ($order && $order['contact_id']) {
+            $order_customer = new waContact($order['contact_id']);
+            try {
+                $order_customer->getName();
+            } catch (waException $e) {
+                $order_customer = null;
+            }
+        }
+
         $order = new waOrder(
             array(
-                'contact_id' => $order ? $order['contact_id'] : null,
-                'contact'    => $order ? new waContact($order['contact_id']) : null,
+                'contact_id' => $order_customer ? $order['contact_id'] : null,
+                'contact'    => $order_customer,
                 'params'     => $order_params,
             )
         );
@@ -132,6 +143,9 @@ class shopHelper
     {
         $plugin_model = new shopPluginModel();
         $options = array();
+        if (!empty($params[shopPluginModel::TYPE_SHIPPING])) {
+            $options = (array)$params[shopPluginModel::TYPE_SHIPPING];
+        }
         if (!empty($params[shopPluginModel::TYPE_PAYMENT])) {
             $options[shopPluginModel::TYPE_PAYMENT] = $params[shopPluginModel::TYPE_PAYMENT];
         }
@@ -364,6 +378,9 @@ class shopHelper
             // Note that we cannot use @2x versions here since Gravatar
             // removes the @ symbol (even escaped) from the URL before redirect.
             $default = wa()->getRootUrl(true).'wa-content/img/userpic'.$size.'.jpg';
+            if (!file_exists($default)) {
+                $default = wa()->getRootUrl(true).'wa-content/img/userpic50.jpg';
+            }
             $default = urlencode($default);
         }
         $url = '//www.gravatar.com/avatar/'.md5(strtolower(trim($email)))."?size=$size&default=$default";
@@ -390,7 +407,7 @@ class shopHelper
         $states = $workflow->getAllStates();
         foreach ($orders as & $order) {
             $order['id_str'] = self::encodeOrderId($order['id']);
-            $order['total_str'] = wa_currency_html(ifset($order['total'], 0), ifset($order['currency']));
+            $order['total_str'] = wa_currency_html(ifset($order, 'total', 0), ifset($order, 'currency', null));
             if (!empty($order['create_datetime'])) {
                 $order['create_datetime_str'] = wa_date('humandatetime', $order['create_datetime']);
             }
@@ -493,14 +510,20 @@ class shopHelper
      * @param array $order_params Array of order address parameters with keys of the form 'shipping_address.***' or 'payment_address.***'
      * @param string $addr_type Address type: 'shipping' or 'payment'
      * @return array
+     * @throws waException
      */
     public static function getOrderAddress($order_params, $addr_type)
     {
         $address = array();
-        foreach (waContactFields::get('address')->getFields() as $k => $v) {
-            $address[$k] = ifset($order_params[$addr_type.'_address.'.$k]);
+        $contact_fields = waContactFields::get('address');
+        if ($contact_fields) {
+            foreach ($contact_fields->getFields() as $k => $v) {
+                $address[$k] = ifset($order_params[$addr_type.'_address.'.$k]);
+            }
+            return $address;
+        } else {
+            throw new waException('Contact fields "address" is disabled');
         }
-        return $address;
     }
 
     /**
@@ -752,11 +775,10 @@ class shopHelper
         } else {
             if (wa()->getEnv() == 'backend') {
                 // Tweaks for backend order editor.
-                // We want shipping address to show even if disabled in settings.
-                // !!! Why is that?.. No idea. Legacy code.
-                if (!isset($fields_config['address.shipping'])) {
-                    $fields_config['address.shipping'] = $address_config;
-                }
+                // We want shipping address to show even if disabled in settings,
+                // and show all address subfields regardless of frontend checkout settings.
+                $fields_config['address.shipping'] = $address_config;
+
                 // When an existing contact has address specified, we want to show all the data fields
                 if ($contact) {
                     foreach (array('address.shipping', 'address.billing') as $addr_field_id) {
@@ -799,7 +821,9 @@ class shopHelper
                 )
             );
         }
-        $contact && $form->setValue($contact);
+        if ($contact) {
+            $form->setValue($contact);
+        }
         return $form;
     }
 

@@ -52,22 +52,26 @@
             $('.wf-action').click(function () {
                 var self = $(this);
                 if (!self.data('confirm') || confirm(self.data('confirm'))) {
-                    self.after('<i class="icon16 loading"></i>');
-                    $.post('?module=workflow&action=prepare', {
-                        action_id: self.attr('data-action-id'),
-                        id: $.order.id
-                    }, function (response) {
-                        var el;
-                        self.parent().find('.loading').remove();
-                        if (self.data('container')) {
-                            el = $(self.data('container'));
-                            el.prev('.workflow-actions').hide();
-                        } else {
-                            self.closest('.workflow-actions').hide();
-                            el = self.closest('.workflow-actions').next();
-                        }
-                        el.empty().html(response).show();
-                    });
+                    if (!self.data('running')) {
+                        self.data('running', true);
+                        self.after('<i class="icon16 loading"></i>');
+                        $.post('?module=workflow&action=prepare', {
+                            action_id: self.attr('data-action-id'),
+                            id: $.order.id
+                        }, function (response) {
+                            self.data('running', false);
+                            var el;
+                            self.parent().find('.loading').remove();
+                            if (self.data('container')) {
+                                el = $(self.data('container'));
+                                el.prev('.workflow-actions').hide();
+                            } else {
+                                self.closest('.workflow-actions').hide();
+                                el = self.closest('.workflow-actions').next();
+                            }
+                            el.empty().html(response).show();
+                        });
+                    }
                 }
                 return false;
             });
@@ -161,7 +165,7 @@
                 return false;
             });
             if (this.options.order) {
-                $.order_list.updateListItems(this.options.order);
+                if ($.order_list) $.order_list.updateListItems(this.options.order);
                 var container = ($.order_list.container || $("#s-content"));
                 container.find('.selected').removeClass('selected');
                 container.find('.order[data-order-id=' + this.options.order.id + ']').
@@ -241,7 +245,7 @@
                 wrapper_margin_top = ( parseInt( $wrapper.css("margin-top") ) || 0 ),
                 set_force = true;
 
-            // DINAMIC VARS
+            // DYNAMIC VARS
             var is_top_set = false,
                 is_fixed_to_bottom = false,
                 is_fixed_to_top = false,
@@ -339,7 +343,7 @@
                     dynamic_block_top = Math.floor( $block.offset().top ),
                     direction = ( scroll_value > scroll_top ) ? 1 : -1,
                     delta = scroll_top - block_top,
-                    min_width = 760;
+                    min_width = 0;
 
                 block_width = $block.width();
 
@@ -354,6 +358,11 @@
                         unsetResizeWatcher();
                     }
                 } else {
+
+                    // wait while loading new content and increase height
+                    if (!is_fixed_to_bottom && wrapper_height <= block_height ) {
+                        return false;
+                    }
 
                     var is_display_longer_block = ( display_height > block_height + wrapper_margin_top ),
                         is_above_block = (scroll_top <= block_top),

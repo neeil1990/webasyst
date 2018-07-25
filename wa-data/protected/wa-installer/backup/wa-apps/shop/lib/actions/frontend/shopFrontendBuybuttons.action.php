@@ -86,8 +86,8 @@ class shopFrontendBuybuttonsAction extends waViewAction
                 $available = false;
             }
             $_POST['features'] = $features;
-        } else {
-            $sku_id = (int)$post['sku_id'];
+        } else if (count($product->skus) > 1) {
+            $sku_id = (int) ifset($post['sku_id']);
             $skus = $product->skus;
             if (!isset($skus[$sku_id]) || !$skus[$sku_id]['available']) {
                 $available = false;
@@ -149,10 +149,10 @@ class shopFrontendBuybuttonsAction extends waViewAction
     public function getProduct($id)
     {
         if ($this->product === null) {
-            $product = new shopProduct($id);
+            $product = new shopProduct($id, true);
             $skus = $product->skus;
             foreach ($skus as &$sku) {
-                $sku['price_html'] = shop_currency_html($sku['price']);
+                $sku['price_html'] = shop_currency_html($sku['price'], $product['currency']);
                 $sku['orig_available'] = $sku['available'];
                 $sku['available'] = $this->isProductSkuAvailable($product, $sku);
             }
@@ -165,7 +165,13 @@ class shopFrontendBuybuttonsAction extends waViewAction
 
     private function featuresSelectableWorkup($product)
     {
-        $features_selectable = $product->features_selectable;
+        if (!$this->isPreview()) {
+            $features_selectable = $product->features_selectable;
+        } else {
+            // in preview we call controller directly not using storefront and routing
+            $fsm = new shopProductFeaturesSelectableModel();
+            $features_selectable = $fsm->getDataByProduct($product, array('env' => 'frontend'));
+        }
 
         $product_features_model = new shopProductFeaturesModel();
         $sku_features = $product_features_model->getSkuFeatures($product->id);
@@ -223,5 +229,10 @@ class shopFrontendBuybuttonsAction extends waViewAction
     {
         return $product->status && $sku['available'] &&
             ($this->getConfig()->getGeneralSettings('ignore_stock_count') || $sku['count'] === null || $sku['count'] > 0);
+    }
+
+    public function isPreview()
+    {
+        return wa()->getRequest()->request('preview');
     }
 }

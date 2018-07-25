@@ -96,7 +96,7 @@
                             sort: this.sort,
                             primary_currency: this.options.primary_currency,
                             stocks: this.options.stocks
-                        }, this.options.view == 'table'));
+                        }, this.options.view != 'thumbs'));
                         this.container.trigger('append_product_list', [products]);
                     } catch (e) {
                         console.log('Error: ' + e.message);
@@ -190,7 +190,7 @@
                                 try {
                                     self.container.append(tmpl('template-product-list-' + self.options.view, {
                                         products: r.data.products,
-                                        check_all: self.options.view == 'table' ? product_list.find('.s-select-all:first').attr('checked') : false,
+                                        check_all: product_list.find('.s-select-all:first').length ? product_list.find('.s-select-all:first').attr('checked') : false,
                                         sort: $.product_list.sort,
                                         primary_currency: $.product_list.options.primary_currency,
                                         stocks: $.product_list.options.stocks
@@ -375,11 +375,14 @@
             try {
                 var product_list = this.container;
                 var sidebar = this.sidebar;
-                if (view == 'table') {
+
+                if (product_list.find('.s-select-all:first').length) {
                     product_list.find('.s-select-all:first').click(function () {
                         $(this).trigger('select', this.checked);
                     });
+                }
 
+                if (view == 'table') {
                     // Click on a table view icon toggles product name view in table: single-lined or multi-lined
                     $('#s-content .list-view-mode-table').click(function() {
                         product_list.toggleClass('single-lined');
@@ -393,34 +396,17 @@
 
                 // var param = 'view=' + view + (this.sort ? '&sort=' + this.sort : '');
                 var param = 'view=' + view;
-
                 sidebar.find('.s-collection-list li.dr').each(function () {
                     var self = $(this);
                     self.find('a:first').attr('href', '#/products/' + self.attr('id').replace('-', '_id=') + '&' + param);
-
                 });
-
                 $('#s-products-search').autocomplete('disable').val(this.options.text || '').autocomplete('enable');
 
                 var li_id = 's-all-products';
                 if ($.product_list.collection_hash.length && $.product_list.collection_hash[0] !== 'search' && $.product_list.collection_hash[0] !== 'tag') {
                     li_id = $.product_list.collection_hash.join('-');
                 }
-
-                var text = '';
-                sidebar.find('.s-collection-list li.dr').each(function (li,data) {
-                  if($(data).attr('id') === li_id){
-                      var li_data = $(data);
-                      text = $('.name',li_data).text();
-                  }
-                });
-
-                if(view == 'thumbs'){
-                    $.product_list.collection_hash[2] = text;
-                }
-
-
-                $.shop.trace('$.product_list.initView', [view, li_id,text]);
+                $.shop.trace('$.product_list.initView', [view, li_id]);
                 sidebar.find('li.selected').removeClass('selected');
 
                 var active_element = sidebar.find('#' + li_id);
@@ -434,11 +420,6 @@
                 if ($.product_list.collection_hash.length && $.product_list.collection_hash[0] !== 'search' && $.product_list.collection_hash[0] !== 'tag') {
                     active_element.find('.count:first').text(this.category_count);
                 }
-
-                $('#s-content').find('.sort').unbind('click').bind('click', function () {
-                    location.href = $(this).find('a').attr('href');
-                    return false;
-                });
 
                 $.product_list.fixed_blocks = $.product_list.initFixedBlocks();
 
@@ -1545,7 +1526,9 @@
                             // assignTags
                             var data = self.serializeArray().concat(products.serialized);
                             $.shop.jsonPost(url, data, function (r) {
-                                if (r.data.cloud) {
+                                if (r.data.cloud = 'search') {
+                                    d.trigger('close');
+                                } else if(r.data.cloud) {
                                     $('#s-tag-cloud').trigger('update', [r.data.cloud]);
                                 }
                                 d.trigger('close');

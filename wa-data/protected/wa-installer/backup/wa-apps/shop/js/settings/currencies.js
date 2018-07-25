@@ -133,13 +133,20 @@ $.extend($.settings = $.settings || {}, {
 
                 var tr_new = tr.prev();
                 jsonPost('?module=settings&action=currencyAdd', { code: value },
-                    function() {
-                        tr_new.show();
-                        tr_new.find('.settings').trigger('click');
-                        change_dialog.find('select').append('<option value="'+value+'" data-rate="1">'+value+'</option>');
+                    function(response) {
+                        if(response.status==='ok') {
+                            $.shop.trace('response', response.data);
+                            tr_new.show();
+                            tr_new.find('.settings').trigger('click');
+                            tr_new.find('select[name^="rounding\['+response.data.code+'\]"]').val(response.data.rounding);
+                            change_dialog.find('select').append('<option value="' + value + '" data-rate="1">' + value + '</option>');
 
-                        if (self.find('option:not(:disabled)').length < 2) {
-                            self.remove();
+                            if (self.find('option:not(:disabled)').length < 2) {
+                                self.remove();
+                            }
+                        } else {
+                            tr_new.remove();
+                            option.attr('disabled', false).show();
                         }
                     },
                     function() {
@@ -150,14 +157,52 @@ $.extend($.settings = $.settings || {}, {
             }
         });
 
-        table.off('edit_rate', '.s-rate.editable span').on('edit_rate', '.s-rate.editable span', function() {
+        var updateRoundingReadonly = function($tr) {
+            var $wrapper = $tr.find('.rounding');
+            var $select = $wrapper.find('select');
+            var $readonly_wrapper = $tr.find('.rounding-readonly').show();
+
+            // Copy rounding state from selector to read-only container
+            $readonly_wrapper.find('.rounding-value').html(
+                $select.find('option:selected').html()
+            );
+
+            // Show or hide '(up only)' depending on checkbox state
+            var $up_only = $readonly_wrapper.find('.rounding-up-only-enabled').hide();
+            if ($select.val()) {
+                if ($wrapper.find(':checkbox').prop('checked')) {
+                    $up_only.show();
+                }
+            }
+        };
+        table.find('tr').each(function() {
+            updateRoundingReadonly($(this));
+        });
+
+        table.off('edit_rate', '.s-rate.editable span:not([id])').on('edit_rate', '.s-rate.editable span:not([id])', function() {
+            var $tr = $(this).closest('tr');
+            $tr.find('.rounding-readonly').hide();
+            $tr.find('.rounding').show();
+        });
+        table.off('readable', '.s-rate.editable span:not([id])').on('readable', '.s-rate.editable span:not([id])', function() {
+            var $tr = $(this).closest('tr');
+            jsonPost('?module=settings&action=currencyChangeRate', $tr.find(':input').serialize(), function(r) {
+                $tr.find('.s-actions').removeClass('activate');
+                $tr.find('.rounding').hide();
+                updateRoundingReadonly($tr);
+            });
+        });
+
+        table.off('edit_rate', '.s-rate.editable span[id]').on('edit_rate', '.s-rate.editable span[id]', function() {
             $(this).inlineEditable({
                 maxSize: {
                     width: 40
                 },
                 makeReadableBy: ['esc', 'enter'],
                 afterMakeEditable: function(input) {
-                    $(input).closest('tr').find('.rounding').show();
+                    var $tr = $(input).closest('tr');
+                    $tr.find('.rounding-readonly').hide();
+                    $tr.find('.rounding').show();
                 },
                 beforeBackReadable: function(input, data) {
                     var input = $(input);
@@ -177,6 +222,7 @@ $.extend($.settings = $.settings || {}, {
                     var post = $tr.find(':input').serialize();
 
                     $tr.find('.s-actions').removeClass('activate');
+                    updateRoundingReadonly($tr);
 
                     var $input = $(input);
                     var rate = $input.val();

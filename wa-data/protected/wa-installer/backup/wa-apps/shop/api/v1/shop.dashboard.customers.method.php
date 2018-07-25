@@ -1,6 +1,6 @@
 <?php
 
-class shopDashboardCustomersMethod extends waAPIMethod
+class shopDashboardCustomersMethod extends shopApiMethod
 {
     protected $method = 'GET';
 
@@ -34,7 +34,7 @@ class shopDashboardCustomersMethod extends waAPIMethod
 
         $new_customers = 0;
         $graph_data = array();
-        foreach($rows as $row) {
+        foreach ($rows as $row) {
             $new_customers += $row['customers'];
             $date = str_replace('-', '', $row['date']);
             $graph_data[$date] = array(

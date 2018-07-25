@@ -320,8 +320,8 @@ class shopProductFeaturesSelectableModel extends waModel implements shopProductS
                 $sku['name'][] = ifset($value['value'], $value['id']);
 
                 #correct price
-                if (isset($data[$feature_id]['values'][$value_id]['price'])) {
-                    self::parseSkuPrice($sku, $data[$feature_id]['values'][$value_id]['price']);
+                if (isset($data[$code]['values'][$value_id]['price'])) {
+                    self::parseSkuPrice($sku, $data[$code]['values'][$value_id]['price']);
                 }
 
                 #set counts per stock
@@ -404,11 +404,22 @@ class shopProductFeaturesSelectableModel extends waModel implements shopProductS
      */
     public function getData(shopProduct $product)
     {
+        return $this->getDataByProduct($product);
+    }
+
+    /**
+     * @param shopProduct $product
+     * @param array $options
+     * @return array|bool|null
+     */
+    public function getDataByProduct(shopProduct $product, $options = array())
+    {
+        $env = !empty($options['env']) ? $options['env'] : wa()->getEnv();
+
         $feature_model = new shopFeatureModel();
         if ($product->sku_type == shopProductModel::SKU_TYPE_SELECTABLE) {
             $selected = $this->getByProduct($product->id);
 
-            $env = wa()->getEnv();
             if ($env == 'backend') {
                 $features = $feature_model->getMultipleSelectableFeaturesByType($product->type_id);
             } else {
@@ -454,7 +465,7 @@ class shopProductFeaturesSelectableModel extends waModel implements shopProductS
                 unset($f);
             }
         } else {
-            if (wa()->getEnv() == 'backend') {
+            if ($env == 'backend') {
                 $features = $feature_model->isTypeMultipleSelectable($product->type_id);
             } else {
                 $features = array();

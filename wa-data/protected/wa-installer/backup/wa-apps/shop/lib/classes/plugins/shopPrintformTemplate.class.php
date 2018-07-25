@@ -53,6 +53,7 @@ class shopPrintformTemplate
 
     /**
      * @param $html
+     * @return bool|int
      */
     public function save($html)
     {
@@ -61,7 +62,7 @@ class shopPrintformTemplate
             '@\.js$@'
         );
         waFiles::copy(dirname($this->original_path), dirname($this->changed_path), $exclude);
-        file_put_contents($this->changed_path, $html);
+        return file_put_contents($this->changed_path, $html);
     }
 
     /**
@@ -74,12 +75,11 @@ class shopPrintformTemplate
 
     public function setView(waView $view)
     {
-       $this->view = $view;
+        $this->view = $view;
     }
 
     public function display()
     {
         return $this->view->fetch($this->getPath());
     }
-
 }
