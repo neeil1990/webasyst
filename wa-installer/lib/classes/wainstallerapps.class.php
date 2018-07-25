@@ -118,6 +118,20 @@ class waInstallerApps
             $signature['os'] = constant('PHP_OS');
         }
 
+        try {
+            if (class_exists('waDbConnector')) {
+                $adapter = waDbConnector::getConnection();
+                $signature['sql_adapter'] = strtolower(preg_replace('@^waDb(.+)Adapter$@', '$1', get_class($adapter)));
+                if ($result = $adapter->query('SELECT @@version')) {
+                    if ($version = $adapter->fetch($result)) {
+                        $signature['sql'] = preg_replace('@([^0-9\\.].*)$@', '', reset($version));
+                    }
+                }
+            }
+        } catch (Exception $ex) {
+
+        }
+
         return $raw ? $signature : base64_encode(json_encode($signature));
     }
 
@@ -705,9 +719,8 @@ class waInstallerApps
                     unset($versions[$slug]);
                 }
             }
-        } else {
-
         }
+
         return $versions;
     }
 
@@ -1344,12 +1357,14 @@ class waInstallerApps
                 if ($this->identity_hash) {
                     $query = $query.($query ? '&' : '').'hash=b88180ac356a881774d531a7924fb044';
                 }
+                if ($identity_hash = $this->getGenericConfig('previous_hash')) {
+                    $query = $query.($query ? '&' : '').'previous_hash='.$identity_hash;
+                }
                 if ($this->promo_id) {
                     $query = $query.($query ? '&' : '').'promo_id='.$this->promo_id;
                 }
                 $domain = $this->getDomain();
                 if ($domain) {
-
                     $query = $query.($query ? '&' : '').'domain=YWxtYW1lZC5zdQ%3D%3D';
                 }
                 if (preg_match('@/(download|archive)/@', $path)) {
@@ -1400,6 +1415,7 @@ class waInstallerApps
         }
         //hash=b88180ac356a881774d531a7924fb044&domain=YWxtYW1lZC5zdQ%3D%3D&signature=eyJwaHAiOiI1LjYuMzAiLCJjIjo4LCJhcGkiOiJhcGFjaGUyaGFuZGxlciIsIm9zIjoiTGludXgiLCJyIjoiNC45Ljc1LTAtYmVnZXQtYWNsIn0%3D&locale=ru_RU
         //waLog::log(print_r($query, true), 'blog/myplugin/blog-save.log');
+
         return $is_url;
     }
 
@@ -1778,7 +1794,7 @@ class waInstallerApps
      * @param $app_id string
      * @param $routing array
      * @param $domain string
-     * @return string
+     * @return string|string[]
      */
     private function updateRoutingConfig($app_id = 'default', $routing = array(), $domain = null)
     {
@@ -1829,7 +1845,7 @@ class waInstallerApps
 
             if (!isset($current_routing[$domain])) {
                 $current_routing[$domain] = array();
-            } else if (!is_array($current_routing[$domain])) {
+            } elseif (!is_array($current_routing[$domain])) {
                 // When routing is a string, it's domain of redirect-type.
                 // Nothing to update!
                 return $domain;
@@ -1893,7 +1909,7 @@ class waInstallerApps
      *
      * @param $config array
      * @internal param $id
-     * @return void
+     * @return array
      */
     private static function updateGenericConfig($config = array())
     {
@@ -1901,8 +1917,33 @@ class waInstallerApps
             'debug'         => false,
             'identity_hash' => md5(__FILE__.(function_exists('php_uname') ? php_uname() : '').phpversion().rand(0, time())),
         );
-        $config = array_merge($default, self::getConfig(self::CONFIG_GENERIC), $config);
-        self::setConfig(self::CONFIG_GENERIC, $config);
+        $current = self::getConfig(self::CONFIG_GENERIC);
+        if (isset($config['identity_hash'])) {
+            $log = array(
+                'Regenerate identity hash procedure.',
+            );
+            if ($config['identity_hash']) {
+                if (!empty($current['previous_hash'])) {
+                    $log[] = sprintf('Hold previous change %s->%s.', $current['previous_hash'], $current['identity_hash']);
+                } else {
+                    $config['previous_hash'] = $current['identity_hash'];
+                    $log[] = sprintf('Change hash %s->%s.', $current['identity_hash'], $default['identity_hash']);
+                    unset($current['identity_hash']);
+                }
+            } elseif (!empty($current['previous_hash'])) {
+                $log[] = sprintf('Remove obsolete hash %s.', $current['previous_hash']);
+                unset($current['previous_hash']);
+            } else {
+                $log[] = 'Attempt to remove deleted obsolete hash.';
+                unset($current['previous_hash']);
+            }
+            if (class_exists('waLog')) {
+                waLog::log(implode("\n", $log), 'installer/identity_hash.log');
+            }
+            unset($config['identity_hash']);
+        }
+        $config = array_merge($default, $current, $config);
+        return self::setConfig(self::CONFIG_GENERIC, $config);
     }
 
     /**
@@ -2112,9 +2153,7 @@ class waInstallerApps
      */
     private function query($query, $vendor = self::VENDOR_SELF, $values = false)
     {
-        /**
-         * @var $file waInstallerFile
-         */
+        /** @var waInstallerFile $file */
         static $file;
         $result = false;
         $sources = $this->getSources(self::LIST_APPS, $vendor);
@@ -2133,6 +2172,13 @@ class waInstallerApps
                     $file = new waInstallerFile();
                 }
                 $result = $file->getData($url, 'json', $values);
+                $headers = $file->getHeaders();
+                if (isset($headers['identity_hash'])) {
+                    $config = array(
+                        'identity_hash' => intval($headers['identity_hash']),
+                    );
+                    self::updateGenericConfig($config);
+                }
             }
         }
         return $result;
