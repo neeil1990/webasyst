@@ -35,7 +35,7 @@
                     };
 
                     $.post(action, data, function (html) {
-                        if(html == 1){
+                        if(html.status == "ok"){
                             d.trigger('close');
                         }
                     });

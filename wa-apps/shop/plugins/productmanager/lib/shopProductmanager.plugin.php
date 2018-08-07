@@ -77,9 +77,9 @@ Class shopProductmanagerPlugin extends shopPlugin {
         foreach($user->getUsers() as $id => $name){
             $contact = new waContact($id);
             foreach($this->field_user as $field){
-                $arr_users[$id][$field] = $contact->get($field,"default");
+                $arr_users[$id][$field] = htmlspecialchars($contact->get($field,"default"));
                 if($field == "photo")
-                    $arr_users[$id][$field] = $contact->getPhoto();
+                    $arr_users[$id][$field] = htmlspecialchars($contact->getPhoto());
             }
         }
         return $arr_users;
@@ -89,13 +89,18 @@ Class shopProductmanagerPlugin extends shopPlugin {
 
         $contact = new waContact($id);
         foreach($this->field_user as $field){
-            if($field == "phone" or $field == "email")
-            $arr_users[$field] = $contact->get($field,"value");
+            if($field == "phone" or $field == "email"){
+                $fields = array();
+                foreach($contact->get($field,"value") as $value){
+                    $fields[] = htmlspecialchars($value);
+                }
+                $arr_users[$field] = $fields;
+            }
             else
-            $arr_users[$field] = $contact->get($field,"default");
+            $arr_users[$field] = htmlspecialchars($contact->get($field,"default"));
 
             if($field == "photo")
-                $arr_users[$field] = $contact->getPhoto(170,170);
+                $arr_users[$field] = htmlspecialchars($contact->getPhoto(170,170));
         }
         return $arr_users;
     }
